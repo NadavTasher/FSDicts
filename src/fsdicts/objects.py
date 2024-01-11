@@ -23,15 +23,22 @@ class ObjectStorage(object):
 		if os.path.isfile(path):
 			# Check if validation should be skipped
 			if not validate:
-				return
+				return hash
 			
 			# Read the file from the path
 			with open(path, "rb") as object:
-				# Validate the hash by reading the object
-				if hash == self._hash(object.read()).hexdigest():
-					return
+				object_value = object.read()
+			
+			# Validate the hash by reading the object
+			if hash == self._hash(object_value).hexdigest():
+				return hash
 
-		# TODO write object
+		# Write the object
+		with open(path, "wb") as object:
+			object.write(value)
+
+		# Return the hash
+		return hash
 
 	def get(self, hash, validate=False):
 		# Create the object path
@@ -43,10 +50,10 @@ class ObjectStorage(object):
 		
 		# Read the file from the path
 		with open(path, "rb") as object:
-			value = object.read()
+			object_value = object.read()
 
 		# Check the hash against the real calculation
-		if validate and hash != self._hash(value).hexdigest():
+		if validate and hash != self._hash(object_value).hexdigest():
 			# Delete the bad object
 			os.remove(path)
 
@@ -54,7 +61,7 @@ class ObjectStorage(object):
 			raise ValueError(hash)
 
 		# Return the value
-		return value
+		return object_value
 
 	def has(self, hash):
 		# Create the object path
@@ -62,9 +69,23 @@ class ObjectStorage(object):
 
 		# Check whether the file exists
 		return os.path.isfile(path)
+	
+	def use(self, hash, destination):
+		# Create the object path
+		path = os.path.join(self._path, hash)
 
-	def has_object_by_value(self, value):
-		pass
+		# Check whether the path exists
+		if not os.path.isfile(path):
+			raise KeyError(hash)
+		
+		# Make sure the destination does not exist
+		if os.path.islink(destination):
+			os.unlink(destination)
 
-	def purge_stale_objects(self):
-		pass
+		# Create the link
+		os.link(path, destination)
+		
+	def purge(self):
+		# List all files in the storage and check the link count
+		for hash in os.listdir(self._path):
+			pass

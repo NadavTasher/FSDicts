@@ -1,7 +1,7 @@
 import json
 import functools
 
-from fstypes.bunch import MutableBunchMapping, Mapping, Bunch
+from fsdicts.bunch import MutableBunchMapping, Mapping, Bunch
 
 # Default value to use instead of None, when None can be used as a value
 _DEFAULT = object()

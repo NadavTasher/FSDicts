@@ -2,7 +2,7 @@ import os
 import shutil
 import contextlib
 
-from fstypes.dict.mapping import AbstractMutableMapping
+from fsdicts.dict.mapping import AbstractMutableMapping
 
 
 class FileSystemMutableMapping(AbstractMutableMapping):

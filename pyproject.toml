@@ -1,7 +1,7 @@
 [project]
-name = "fstypes"
+name = "fsdicts"
 version = "0.0.1"
-description = "A simple library for file-system synced types."
+description = "A simple library for file-system synced dictionaries."
 readme = "README.md"
 license = {file = "LICENSE"}
 maintainers = [{name = "Nadav Tasher", email = "hey@nadav.app"}]
@@ -13,7 +13,7 @@ classifiers = [
 keywords = ["database", "queue", "types"]
 
 [project.urls]
-Homepage = "https://github.com/NadavTasher/FSTypes"
+Homepage = "https://github.com/NadavTasher/FSDicts"
 
 [build-system]
 requires = ["setuptools>=61.0"]

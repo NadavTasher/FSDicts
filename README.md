@@ -1,2 +1,2 @@
-# fstypes
-A simple library for file-system synced types.
+# fsdicts
+A simple library for file-system synced dicts.

@@ -1,7 +1,7 @@
 import os
 import hashlib
 
-from fstypes.dict.filesystem import FileSystemMutableMapping
+from fsdicts.dict.filesystem import FileSystemMutableMapping
 
 
 class Storage(object):

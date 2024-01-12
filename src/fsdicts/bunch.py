@@ -1,10 +1,4 @@
-try:
-    # Python 3 mapping
-    from collections.abc import MutableMapping, Mapping
-except:
-    # Python 2 mapping
-    from collections import MutableMapping, Mapping
-
+from fsdicts.mapping import MutableMapping, Mapping
 
 class BunchMapping(Mapping):
 

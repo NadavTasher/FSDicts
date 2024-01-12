@@ -1,7 +1,8 @@
 import os
 import hashlib
+import binascii
 
-class ObjectStorage(object):
+class Storage(object):
 
 	def __init__(self, path, hash=hashlib.md5):
 		# Intialize the path and hash
@@ -32,10 +33,16 @@ class ObjectStorage(object):
 			# Validate the hash by reading the object
 			if hash == self._hash(object_value).hexdigest():
 				return hash
+			
+		# Create temporary path for writing
+		temporary = path + "." + binascii.b2a_hex(os.urandom(4))
 
 		# Write the object
-		with open(path, "wb") as object:
+		with open(temporary, "wb") as object:
 			object.write(value)
+
+		# Rename the temporary file
+		os.rename(temporary, path)
 
 		# Return the hash
 		return hash
@@ -84,8 +91,45 @@ class ObjectStorage(object):
 
 		# Create the link
 		os.link(path, destination)
+
+	def unuse(self, link):
+		# Check whether the path exists
+		if not os.path.islink(link):
+			raise ValueError(link)
+		
+		# Follow the link to the object
+		path = os.readlink(link)
+		
+		# Remove the link
+		os.unlink(link)
+
+		# Clean the path
+		self.clean(path)
 		
 	def purge(self):
 		# List all files in the storage and check the link count
 		for hash in os.listdir(self._path):
-			pass
+			# Create the file path
+			path = os.path.join(self._path, hash)
+
+			# If path does not exist, skip
+			if not os.path.isfile(path):
+				continue
+
+			# Clean the file
+			self.clean(path)
+
+	def clean(self, path):
+		# Make sure the path exists
+		if not os.path.isfile(path):
+			raise ValueError(path)
+		
+		# Get number of hardlinks
+		links = os.stat(path).st_nlink
+
+		# If more then one link exists, skip
+		if links > 1:
+			return
+		
+		# Remove the file
+		os.remove(path)

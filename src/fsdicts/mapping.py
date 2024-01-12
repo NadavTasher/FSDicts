@@ -1,13 +1,19 @@
 import json
 import functools
 
-from fsdicts.bunch import MutableBunchMapping, Mapping, Bunch
+try:
+    # Python 3 mapping
+    from collections.abc import MutableMapping, Mapping
+except:
+    # Python 2 mapping
+    from collections import MutableMapping, Mapping
+
 
 # Default value to use instead of None, when None can be used as a value
-_DEFAULT = object()
+DEFAULT = object()
 
 
-class AbstractMutableMapping(MutableBunchMapping):
+class AdvancedMutableMapping(MutableMapping):
 
     def __repr__(self):
         # Format the data like a dictionary
@@ -30,13 +36,13 @@ class AbstractMutableMapping(MutableBunchMapping):
         # Comparison succeeded
         return True
 
-    def pop(self, key, default=_DEFAULT):
+    def pop(self, key, default=DEFAULT):
         try:
             # Fetch the value
             value = self[key]
 
             # Check if the value is a keystore
-            if isinstance(value, AbstractMutableMapping):
+            if isinstance(value, Mapping):
                 value = value.copy()
 
             # Delete the item
@@ -46,7 +52,7 @@ class AbstractMutableMapping(MutableBunchMapping):
             return value
         except KeyError:
             # Check if a default is defined
-            if default != _DEFAULT:
+            if default != DEFAULT:
                 return default
 
             # Reraise exception
@@ -76,7 +82,7 @@ class AbstractMutableMapping(MutableBunchMapping):
             value = self[key]
 
             # Check if value is a keystore
-            if isinstance(value, AbstractMutableMapping):
+            if isinstance(value, Mapping):
                 value = value.copy()
 
             # Update the bunch
@@ -105,7 +111,7 @@ class Encoder(json.JSONEncoder):
 
     def default(self, obj):
         # Check if the object is a keystore
-        if isinstance(obj, AbstractMutableMapping):
+        if isinstance(obj, Mapping):
             # Return a JSON encodable representation of the keystore
             return obj.copy()
 

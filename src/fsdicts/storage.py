@@ -24,7 +24,7 @@ class Storage(object):
 		if os.path.isfile(path):
 			# Check if validation should be skipped
 			if not validate:
-				return hash
+				return path
 			
 			# Read the file from the path
 			with open(path, "rb") as object:
@@ -32,10 +32,10 @@ class Storage(object):
 			
 			# Validate the hash by reading the object
 			if hash == self._hash(object_value).hexdigest():
-				return hash
+				return path
 			
 		# Create temporary path for writing
-		temporary = path + "." + binascii.b2a_hex(os.urandom(4))
+		temporary = path + "." + binascii.b2a_hex(os.urandom(4)).decode()
 
 		# Write the object
 		with open(temporary, "wb") as object:
@@ -45,63 +45,25 @@ class Storage(object):
 		os.rename(temporary, path)
 
 		# Return the hash
-		return hash
+		return path
 
-	def get(self, hash, validate=False):
-		# Create the object path
-		path = os.path.join(self._path, hash)
-
+	def release(self, link):
 		# Check whether the path exists
-		if not os.path.isfile(path):
-			raise KeyError(hash)
-		
-		# Read the file from the path
-		with open(path, "rb") as object:
-			object_value = object.read()
-
-		# Check the hash against the real calculation
-		if validate and hash != self._hash(object_value).hexdigest():
-			# Delete the bad object
-			os.remove(path)
-
-			# Raise the value error
-			raise ValueError(hash)
-
-		# Return the value
-		return object_value
-
-	def has(self, hash):
-		# Create the object path
-		path = os.path.join(self._path, hash)
-
-		# Check whether the file exists
-		return os.path.isfile(path)
-	
-	def use(self, hash, destination):
-		# Create the object path
-		path = os.path.join(self._path, hash)
-
-		# Check whether the path exists
-		if not os.path.isfile(path):
-			raise KeyError(hash)
-		
-		# Make sure the destination does not exist
-		if os.path.islink(destination):
-			os.unlink(destination)
-
-		# Create the link
-		os.link(path, destination)
-
-	def unuse(self, link):
-		# Check whether the path exists
-		if not os.path.islink(link):
+		if not os.path.isfile(link):
 			raise ValueError(link)
 		
-		# Follow the link to the object
-		path = os.readlink(link)
+		# Read the link and create hash
+		with open(link, "rb") as object:
+			object_value = object.read()
+
+		# Create object hash
+		object_hash = self._hash(object_value).hexdigest()
 		
 		# Remove the link
 		os.unlink(link)
+
+		# Create object path
+		path = os.path.join(self._path, object_hash)
 
 		# Clean the path
 		self.clean(path)
@@ -124,11 +86,8 @@ class Storage(object):
 		if not os.path.isfile(path):
 			raise ValueError(path)
 		
-		# Get number of hardlinks
-		links = os.stat(path).st_nlink
-
 		# If more then one link exists, skip
-		if links > 1:
+		if os.stat(path).st_nlink > 1:
 			return
 		
 		# Remove the file

@@ -10,7 +10,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
 ]
-keywords = ["database", "queue", "types"]
+keywords = ["database", "filesystem"]
 
 [project.urls]
 Homepage = "https://github.com/NadavTasher/FSDicts"

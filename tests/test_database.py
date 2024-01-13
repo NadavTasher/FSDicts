@@ -90,6 +90,7 @@ def test_bunch_write_read_has_delete(bunch_database):
     with pytest.raises(AttributeError):
         assert bunch_database.hello_world == "Hello World!"
 
+
 def test_len(database):
     # Make sure database is empty
     assert not database
@@ -99,6 +100,7 @@ def test_len(database):
 
     # Make sure database is not empty
     assert database
+
 
 def test_pop(database):
     # Load value to database
@@ -110,6 +112,7 @@ def test_pop(database):
     # Make sure the database is empty
     assert not database
 
+
 def test_popitem(database):
     # Load value to database
     database["Hello"] = "World"
@@ -119,6 +122,7 @@ def test_popitem(database):
 
     # Make sure the database is empty
     assert not database
+
 
 def test_copy(database):
     # Load values to database
@@ -132,6 +136,7 @@ def test_copy(database):
     assert isinstance(copy, dict)
     assert copy == {"Hello1": "World1", "Hello2": "World2"}
 
+
 def test_equals(database):
     # Load values to database
     database["Hello1"] = "World1"
@@ -140,6 +145,7 @@ def test_equals(database):
     assert database == {"Hello1": "World1", "Hello2": "World2"}
     assert database != {"Hello1": "World1", "Hello2": "World2", "Hello3": "World3"}
     assert database != {"Hello2": "World2", "Hello3": "World3"}
+
 
 def test_representation(database):
     # Make sure looks good empty
@@ -151,6 +157,7 @@ def test_representation(database):
 
     # Make sure looks good with data
     assert repr(database) in ["{'Hello': 'World', 'Other': {'Test': 1}}", "{'Other': {'Test': 1}, 'Hello': 'World'}"]
+
 
 def test_clear(database):
     # Load some values

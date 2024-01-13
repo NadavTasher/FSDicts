@@ -17,22 +17,23 @@ def test_setdefaults():
     assert bunch.hello == "World"
     assert bunch.world == "Good"
 
+
 def test_json_encoding():
     # Create a test class that imitates a mapping
     class MyMapping(Mapping):
 
         def __getitem__(self, key):
             return "World"
-        
+
         def __len__(self):
             return 1
 
         def __iter__(self):
             return iter(["Hello"])
-        
+
         def copy(self):
             return {key: self[key] for key in self}
-        
+
     # Create a test object
     my_mapping = MyMapping()
 

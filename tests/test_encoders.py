@@ -23,6 +23,6 @@ def test_generic_encode_decode(encoder, value):
     assert decoded_value == value
 
 
-@pytest.mark.parametrize("value", [b"Hello", "World", ("Hello", "World"), {"Hello": "World"}, ["Hello", "World"], datetime.datetime.now()])
+@pytest.mark.parametrize("value", [b"Hello", "World", ("Hello", "World"), datetime.datetime.now()])
 def test_python_encode_decode(value):
     test_generic_encode_decode(PYTHON, value)

@@ -87,5 +87,5 @@ def test_bunch_write_read_has_delete(bunch_database):
     assert not hasattr(bunch_database, "hello_world")
 
     # Make sure a KeyError is raised
-    with pytest.raises(KeyError):
+    with pytest.raises(AttributeError):
         assert bunch_database.hello_world == "Hello World!"

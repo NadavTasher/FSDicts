@@ -35,6 +35,9 @@ class Storage(object):
 class LinkStorage(Storage):
 
     def __init__(self, path, hash=hashlib.md5):
+        # Make the path absolute
+        path = os.path.abspath(path)
+
         # Intialize the path and hash
         self._path = path
         self._hash = hash
@@ -129,6 +132,9 @@ class LinkStorage(Storage):
 class ReferenceStorage(Storage):
 
     def __init__(self, path, hash=hashlib.md5):
+        # Make the path absolute
+        path = os.path.abspath(path)
+
         # Intialize the path and hash
         self._path = path
         self._hash = hash

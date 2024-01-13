@@ -1,7 +1,7 @@
 import os
 
-from fsdicts.encoders import JSON
-from fsdicts.storage import ReferenceStorage
+from fsdicts.encoders import JSON, PYTHON
+from fsdicts.storage import ReferenceStorage, LinkStorage
 from fsdicts.dictionary import AttributeDictionary
 
 
@@ -16,3 +16,9 @@ def fsdict(path, encoder=JSON, dictionary=AttributeDictionary, storage=Reference
 
     # Initialize the keystore with objects path and a rainbow table
     return dictionary(os.path.join(path, "structure"), (key_storage, value_storage), encoder)
+
+
+if os.name == "posix":
+
+    def fastdict(path):
+        return fsdict(path, encoder=PYTHON, dictionary=AttributeDictionary, storage=LinkStorage)

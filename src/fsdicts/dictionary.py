@@ -15,14 +15,17 @@ DEFAULT = object()
 class Dictionary(AdvancedMutableMapping):
 
     def __init__(self, path, storage, encoder):
-        # Make sure path exists
-        if not os.path.exists(path):
-            os.makedirs(path)
+        # Make the path absolute
+        path = os.path.abspath(path)
 
         # Set internal variables
         self._path = path
         self._encode, self._decode = encoder
         self._key_storage, self._value_storage = storage
+
+        # Make sure path exists
+        if not os.path.exists(self._path):
+            os.makedirs(self._path)
 
     def _resolve_key(self, key):
         # Hash the key using hashlib

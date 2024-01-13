@@ -8,7 +8,6 @@ except:
     # Python 2 mapping
     from collections import MutableMapping, Mapping
 
-
 # Default value to use instead of None, when None can be used as a value
 DEFAULT = object()
 

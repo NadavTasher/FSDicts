@@ -1,5 +1,6 @@
 from fsdicts.mapping import MutableMapping, Mapping
 
+
 class BunchMapping(Mapping):
 
     def __getattr__(self, key):
@@ -8,6 +9,13 @@ class BunchMapping(Mapping):
         except AttributeError:
             # Key is not in prototype chain, return it
             return self[key]
+
+    def __hasattr__(self, key):
+        try:
+            return object.__hasattribute__(self, key)
+        except AttributeError:
+            # Key is not in prototype chain, return it
+            return key in self
 
 
 class MutableBunchMapping(MutableMapping, BunchMapping):

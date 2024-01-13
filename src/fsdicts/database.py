@@ -2,10 +2,10 @@ import os
 
 from fsdicts.encoders import JSON
 from fsdicts.storage import ReferenceStorage
-from fsdicts.dictionary import BunchDictionary
+from fsdicts.dictionary import AttributeDictionary
 
 
-def fsdict(path, encoder=JSON, dictionary=BunchDictionary, storage=ReferenceStorage):
+def fsdict(path, encoder=JSON, dictionary=AttributeDictionary, storage=ReferenceStorage):
     # Create the directory
     if not os.path.exists(path):
         os.makedirs(path)

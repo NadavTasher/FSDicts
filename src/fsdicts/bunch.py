@@ -1,7 +1,7 @@
 from fsdicts.mapping import MutableMapping, Mapping
 
 
-class BunchMapping(Mapping):
+class AttributeMapping(Mapping):
 
     def __getattr__(self, key):
         try:
@@ -15,7 +15,7 @@ class BunchMapping(Mapping):
                 raise AttributeError(key)
 
 
-class MutableBunchMapping(MutableMapping, BunchMapping):
+class MutableAttributeMapping(MutableMapping, AttributeMapping):
 
     def __setattr__(self, key, value):
         try:
@@ -46,5 +46,5 @@ class MutableBunchMapping(MutableMapping, BunchMapping):
             object.__delattr__(self, key)
 
 
-class Bunch(dict, MutableBunchMapping):
+class Bunch(dict, MutableAttributeMapping):
     pass

@@ -1,12 +1,15 @@
 import os
 import hashlib
 
-from fsdicts.bunch import MutableBunchMapping
+from fsdicts.bunch import MutableAttributeMapping
 from fsdicts.mapping import AdvancedMutableMapping, Mapping
 
 # Create key and value prefixes
 PREFIX_KEY = "key-"
 PREFIX_VALUE = "value-"
+
+# Create default object so that None can be used as default value
+DEFAULT = object()
 
 
 class Dictionary(AdvancedMutableMapping):
@@ -139,15 +142,97 @@ class Dictionary(AdvancedMutableMapping):
             yield self._decode(encoded_key)
 
     def __len__(self):
-        # Count all non-temporary names
+        # Count all key files
         return len(list(filter(lambda name: name.startswith(PREFIX_KEY), os.listdir(self._path))))
 
+    def __repr__(self):
+        # Format the data like a dictionary
+        return "{%s}" % ", ".join("%r: %r" % item for item in self.items())
 
-class BunchDictionary(Dictionary, MutableBunchMapping):
+    def __eq__(self, other):
+        # Make sure the other object is a mapping
+        if not isinstance(other, Mapping):
+            return False
+
+        # Make sure all keys exist
+        if set(self.keys()) != set(other.keys()):
+            return False
+
+        # Make sure all the values equal
+        for key in self:
+            if self[key] != other[key]:
+                return False
+
+        # Comparison succeeded
+        return True
+
+    def pop(self, key, default=DEFAULT):
+        try:
+            # Fetch the value
+            value = self[key]
+
+            # Check if the value is a keystore
+            if isinstance(value, Mapping):
+                value = value.copy()
+
+            # Delete the item
+            del self[key]
+
+            # Return the value
+            return value
+        except KeyError:
+            # Check if a default is defined
+            if default != DEFAULT:
+                return default
+
+            # Reraise exception
+            raise
+
+    def popitem(self):
+        # Convert self to list
+        keys = list(self)
+
+        # If the list is empty, raise
+        if not keys:
+            raise KeyError()
+
+        # Pop a key from the list
+        key = keys.pop()
+
+        # Return the key and the value
+        return key, self.pop(key)
+
+    def copy(self):
+        # Create initial bunch
+        output = dict()
+
+        # Loop over keys
+        for key in self:
+            # Fetch value of key
+            value = self[key]
+
+            # Check if value is a keystore
+            if isinstance(value, Mapping):
+                value = value.copy()
+
+            # Update the bunch
+            output[key] = value
+
+        # Return the created output
+        return output
+
+    def clear(self):
+        # Loop over keys
+        for key in self:
+            # Delete the item
+            del self[key]
+
+
+class AttributeDictionary(Dictionary, MutableAttributeMapping):
 
     _path = None
     _encode, _decode = None, None
     _key_storage, _value_storage = None, None
 
     def _child_instance(self, path):
-        return BunchDictionary(path, (self._key_storage, self._value_storage), (self._encode, self._decode))
+        return AttributeDictionary(path, (self._key_storage, self._value_storage), (self._encode, self._decode))

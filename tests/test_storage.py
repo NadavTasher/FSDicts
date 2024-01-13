@@ -80,5 +80,5 @@ def test_readlink_purge(storage):
     storage.unlink(reference_path)
 
     # Try reading the original reference
-    with pytest.raises(OSError):
+    with pytest.raises((OSError, IOError)):
         storage.readlink(reference_path)

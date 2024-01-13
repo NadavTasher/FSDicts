@@ -156,7 +156,7 @@ def test_representation(database):
     database["Other"] = {"Test": 1}
 
     # Make sure looks good with data
-    assert repr(database) in ["{'Hello': 'World', 'Other': {'Test': 1}}", "{'Other': {'Test': 1}, 'Hello': 'World'}"]
+    assert repr(database) in ["{'Hello': 'World', 'Other': {'Test': 1}}", "{'Other': {'Test': 1}, 'Hello': 'World'}"] + ["{u'Hello': u'World', u'Other': {u'Test': 1}}", "{u'Other': {u'Test': 1}, u'Hello': u'World'}"]
 
 
 def test_clear(database):

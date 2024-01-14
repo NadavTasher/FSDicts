@@ -5,8 +5,8 @@ from fsdicts.bunch import MutableAttributeMapping
 from fsdicts.mapping import AdvancedMutableMapping, Mapping
 
 # Create key and value prefixes
-PREFIX_KEY = "key-"
-PREFIX_VALUE = "value-"
+FILE_KEY = "key"
+FILE_VALUE = "value"
 
 # Create default object so that None can be used as default value
 DEFAULT = object()
@@ -27,12 +27,12 @@ class Dictionary(AdvancedMutableMapping):
         if not os.path.exists(self._path):
             os.makedirs(self._path)
 
-    def _resolve_key(self, key):
+    def _item_path(self, key):
         # Hash the key using hashlib
         checksum = hashlib.md5(self._encode(key)).hexdigest()
 
         # Create both paths
-        return os.path.join(self._path, PREFIX_KEY + checksum), os.path.join(self._path, PREFIX_VALUE + checksum)
+        return os.path.join(self._path, checksum)
 
     def _child_instance(self, path):
         return Dictionary(path, (self._key_storage, self._value_storage), (self._encode, self._decode))
@@ -42,33 +42,36 @@ class Dictionary(AdvancedMutableMapping):
         if key not in self:
             raise KeyError(key)
 
-        # Resolve key and value paths
-        _, value_path = self._resolve_key(key)
+        # Resolve item path
+        item_path = self._item_path(key)
+
+        # Resolve value path
+        value_path = os.path.join(item_path, FILE_VALUE)
 
         # Check if object is a simple object
         if os.path.isdir(value_path):
             # Create a keystore from the path
             return self._child_instance(value_path)
-
-        # Read the object value
-        encoded_value = self._value_storage.readlink(value_path)
-
-        # Decode the value
-        return self._decode(encoded_value)
+        else:
+            # Read the value, decode and return
+            return self._decode(self._value_storage.readlink(value_path))
 
     def __setitem__(self, key, value):
         # Delete the old value
         if key in self:
             del self[key]
 
-        # Create the key and value paths
-        key_path, value_path = self._resolve_key(key)
+        # Resolve item path
+        item_path = self._item_path(key)
 
-        # Encode the key
-        encoded_key = self._encode(key)
+        # Create the item path
+        os.makedirs(item_path)
+
+        # Resolve value path
+        key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
 
         # Store the key in the object storage
-        key_identifier = self._key_storage.put(encoded_key)
+        key_identifier = self._key_storage.put(self._encode(key))
 
         # Link the key to the translation
         self._key_storage.link(key_identifier, key_path)
@@ -80,28 +83,25 @@ class Dictionary(AdvancedMutableMapping):
 
             # Update the dictionary with the values
             dictionary.update(value)
+        else:
+            # Store the value in the object storage
+            value_identifier = self._value_storage.put(self._encode(value))
 
-            # Return - nothing more to do
-            return
-
-        # Encode the value
-        encoded_value = self._encode(value)
-
-        # Store the value in the object storage
-        value_identifier = self._value_storage.put(encoded_value)
-
-        # Link the value to the translation
-        self._value_storage.link(value_identifier, value_path)
+            # Link the value to the translation
+            self._value_storage.link(value_identifier, value_path)
 
     def __delitem__(self, key):
         # Make sure key exists
         if key not in self:
             raise KeyError(key)
 
-        # Resolve key and value paths
-        key_path, value_path = self._resolve_key(key)
+        # Resolve item path
+        item_path = self._item_path(key)
 
-        # Release the key object
+        # Resolve value path
+        key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
+
+        # Unlink the key object
         self._key_storage.unlink(key_path)
 
         # If the value is a dictionary, clear the dictionary
@@ -114,39 +114,32 @@ class Dictionary(AdvancedMutableMapping):
 
             # Delete the directory - should be empty
             os.rmdir(value_path)
+        else:
+            # Unlink the value object
+            self._value_storage.unlink(value_path)
 
-            # Return - nothing more to do
-            return
-
-        # Release the value object
-        self._value_storage.unlink(value_path)
+        # Remove the item path
+        os.rmdir(item_path)
 
     def __contains__(self, key):
-        # Resolve key and value paths
-        key_path, value_path = self._resolve_key(key)
+        # Resolve item path
+        item_path = self._item_path(key)
 
         # Check if paths exist
-        return os.path.exists(key_path) and os.path.exists(value_path)
+        return os.path.isdir(item_path)
 
     def __iter__(self):
         # List all of the items in the path
-        for name in os.listdir(self._path):
-            # Make sure name starts with key prefix
-            if not name.startswith(PREFIX_KEY):
-                continue
-
+        for checksum in os.listdir(self._path):
             # Create key path
-            key_path = os.path.join(self._path, name)
+            key_path = os.path.join(self._path, checksum, FILE_KEY)
 
-            # Read the key contents
-            encoded_key = self._key_storage.readlink(key_path)
-
-            # Decode the key and yield
-            yield self._decode(encoded_key)
+            # Read the key contents, decode and yield
+            yield self._decode(self._key_storage.readlink(key_path))
 
     def __len__(self):
         # Count all key files
-        return len(list(filter(lambda name: name.startswith(PREFIX_KEY), os.listdir(self._path))))
+        return len(os.listdir(self._path))
 
     def __repr__(self):
         # Format the data like a dictionary

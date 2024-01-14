@@ -4,8 +4,8 @@ import binascii
 
 from fsdicts.lock import Lock
 
-PREFIX_OBJECT = "object-"
-PREFIX_REFERENCES = "references-"
+DIRECTORY_OBJECTS = "objects"
+DIRECTORY_REFERENCES = "references"
 
 
 class Storage(object):
@@ -29,6 +29,9 @@ class Storage(object):
         raise NotImplementedError()
 
     def purge(self):
+        raise NotImplementedError()
+
+    def __len__(self):
         raise NotImplementedError()
 
 
@@ -128,6 +131,10 @@ class LinkStorage(Storage):
             # Clean the file
             self.release(path)
 
+    def __len__(self):
+        # Count the object files
+        return len(os.listdir(self._path))
+
 
 class ReferenceStorage(Storage):
 
@@ -136,19 +143,26 @@ class ReferenceStorage(Storage):
         path = os.path.abspath(path)
 
         # Intialize the path and hash
-        self._path = path
         self._hash = hash
 
-        # Create the path if needed
-        if not os.path.exists(self._path):
-            os.makedirs(self._path)
+        # Create the objects path and references path
+        self._objects_path = os.path.join(path, DIRECTORY_OBJECTS)
+        self._references_path = os.path.join(path, DIRECTORY_REFERENCES)
+
+        # Create the objects directory if needed
+        if not os.path.isdir(self._objects_path):
+            os.makedirs(self._objects_path)
+
+        # Create the references directory if needed
+        if not os.path.isdir(self._references_path):
+            os.makedirs(self._references_path)
 
     def put(self, value):
         # Create the value hash
         hash = self._hash(value).hexdigest()
 
         # Create the object path
-        object_path = os.path.join(self._path, PREFIX_OBJECT + hash)
+        object_path = os.path.join(self._objects_path, hash)
 
         # Check whether the path exists
         if os.path.isfile(object_path):
@@ -170,14 +184,14 @@ class ReferenceStorage(Storage):
     def readlink(self, link):
         # Read the link file
         with open(link, "r") as file:
-            identifier = file.read()
+            hash = file.read()
 
         # Create the object path
-        object_path = os.path.join(self._path, PREFIX_OBJECT + identifier)
+        object_path = os.path.join(self._objects_path, hash)
 
         # Make sure the object exists
         if not os.path.isfile(object_path):
-            raise KeyError(identifier)
+            raise KeyError(hash)
 
         # Read the object file
         with open(object_path, "rb") as object:
@@ -186,16 +200,16 @@ class ReferenceStorage(Storage):
         # Return the value
         return value
 
-    def link(self, identifier, link):
+    def link(self, hash, link):
         # Create the object path
-        object_path = os.path.join(self._path, PREFIX_OBJECT + identifier)
+        object_path = os.path.join(self._objects_path, hash)
 
         # Make sure the object exists
         if not os.path.isfile(object_path):
-            raise KeyError(identifier)
+            raise KeyError(hash)
 
         # Create references file path
-        references_path = os.path.join(self._path, PREFIX_REFERENCES + identifier)
+        references_path = os.path.join(self._references_path, hash)
 
         # Lock the references
         with Lock(references_path):
@@ -205,22 +219,22 @@ class ReferenceStorage(Storage):
 
         # Write the link file
         with open(link, "w") as file:
-            file.write(identifier)
+            file.write(hash)
 
     def unlink(self, link):
         # Read the link file
         with open(link, "r") as file:
-            identifier = file.read()
+            hash = file.read()
 
         # Create the object path
-        object_path = os.path.join(self._path, PREFIX_OBJECT + identifier)
+        object_path = os.path.join(self._objects_path, hash)
 
         # Make sure the object exists
         if not os.path.isfile(object_path):
-            raise KeyError(identifier)
+            raise KeyError(hash)
 
         # Create references file path
-        references_path = os.path.join(self._path, PREFIX_REFERENCES + identifier)
+        references_path = os.path.join(self._references_path, hash)
 
         # Lock the references
         with Lock(references_path):
@@ -240,18 +254,18 @@ class ReferenceStorage(Storage):
         os.remove(link)
 
         # Release the object
-        self.release(identifier)
+        self.release(hash)
 
-    def release(self, identifier):
+    def release(self, hash):
         # Create the object path
-        object_path = os.path.join(self._path, PREFIX_OBJECT + identifier)
+        object_path = os.path.join(self._objects_path, hash)
 
         # Make sure the object exists
         if not os.path.isfile(object_path):
             return
 
         # Create references file path
-        references_path = os.path.join(self._path, PREFIX_REFERENCES + identifier)
+        references_path = os.path.join(self._references_path, hash)
 
         # If the references path exists, check references
         if os.path.isfile(references_path):
@@ -276,13 +290,10 @@ class ReferenceStorage(Storage):
 
     def purge(self):
         # List all objects in storage
-        for name in os.listdir(self._path):
-            # Make sure the name starts with the prefix
-            if not name.startswith(PREFIX_OBJECT):
-                continue
-
-            # Strip the prefix and release
-            identifier = name[len(PREFIX_OBJECT):]
-
+        for hash in os.listdir(self._objects_path):
             # Release the object
-            self.release(identifier)
+            self.release(hash)
+
+    def __len__(self):
+        # Count the object files
+        return len(os.listdir(self._objects_path))

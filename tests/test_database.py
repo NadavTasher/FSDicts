@@ -55,7 +55,7 @@ def test_storage_usage(database):
     database["Hello"] = {"World": {"Another": "Value"}}
 
     # Make sure the storage usage is NOT zero
-    assert os.listdir(database._key_storage._path)
+    assert len(database._key_storage)
 
     # Clear the database
     database.clear()
@@ -64,7 +64,7 @@ def test_storage_usage(database):
     assert len(database) == 0
 
     # Make sure the storage usage is zero
-    assert not os.listdir(database._key_storage._path)
+    assert not len(database._key_storage)
 
 
 def test_bunch_write_read_has_delete(bunch_database):

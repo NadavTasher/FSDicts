@@ -12,11 +12,14 @@ def storage(request):
 
 
 def test_put(storage):
+    # Make sure storage is empty
+    assert not len(storage)
+
     # Add object to storage
     storage.put(b"Hello")
 
     # Make sure object was registered
-    assert len(os.listdir(storage._path))
+    assert len(storage)
 
 
 def test_purge(storage):
@@ -27,7 +30,7 @@ def test_purge(storage):
     storage.purge()
 
     # Make sure object was deleted
-    assert not len(os.listdir(storage._path))
+    assert not len(storage)
 
 
 def test_usage_purge(storage):
@@ -44,13 +47,13 @@ def test_usage_purge(storage):
     storage.purge()
 
     # Make sure object was not deleted
-    assert len(os.listdir(storage._path))
+    assert len(storage)
 
     # Unlink the identifier
     storage.unlink(reference_path)
 
     # Make sure object was deleted
-    assert not len(os.listdir(storage._path))
+    assert not len(storage)
 
 
 def test_readlink_purge(storage):

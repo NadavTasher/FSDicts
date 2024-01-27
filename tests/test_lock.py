@@ -93,3 +93,52 @@ def test_lock_nonblocking():
 
     # Check end time
     assert time.time() - start_time > 1
+
+
+def test_rlock_references():
+    # Create path to lock on
+    path = tempfile.mktemp()
+
+    # Create the lock
+    lock = Lock(path)
+    mutex = RLock(lock)
+
+    # Lock the lock multiple times
+    with mutex:
+        with mutex:
+            with mutex:
+                assert mutex._references == 3
+
+    # Check empty references
+    assert mutex._references == 0
+
+
+def test_rlock_multithreaded_samelock(num_threads=5, thread_sleep=0.2):
+    # Create path to lock on
+    path = tempfile.mktemp()
+
+    # Create the lock
+    lock = Lock(path)
+    mutex = RLock(lock)
+
+    def target(mutex, number):
+        # Try locking the path
+        with mutex:
+            with mutex:
+                time.sleep(number)
+
+    # Create threads
+    threads = [threading.Thread(target=target, args=(mutex, thread_sleep)) for _ in range(num_threads)]
+
+    # Mark start time
+    start = time.time()
+
+    # Start all threads
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    # Make sure end time is larger then start time by more then num_threads * thread_sleep
+    assert (time.time() - start) > float(num_threads * thread_sleep)

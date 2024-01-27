@@ -1,16 +1,14 @@
 import os
 import time
 import random
-
-# Create lock directory postfix
-POSTFIX_LOCK = ".lock"
+import threading
 
 
 class Lock(object):
 
     def __init__(self, path):
         # Create the lock path
-        self._path = path + POSTFIX_LOCK
+        self._path = path + ".lock"
 
         # Create internal state
         self._locked = False
@@ -81,3 +79,67 @@ class Lock(object):
     def __str__(self):
         # Create a string representation of the lock
         return "<%s, %s>" % (self.__class__.__name__, "locked" if self._locked else "unlocked")
+
+
+class RLock(object):
+
+    def __init__(self, lock):
+        # Initialize the internal lock
+        self._lock = lock
+
+        # Initialize the counter
+        self._thread = None
+        self._references = 0
+
+    def acquire(self, blocking=True, timeout=None):
+        # Fetch the current thread
+        current_thread = threading.current_thread()
+
+        # If there are no references, lock the lock
+        if current_thread != self._thread:
+            # Lock the lock
+            self._lock.acquire(blocking=blocking, timeout=timeout)
+
+            # Set the thread
+            self._thread = current_thread
+
+        # Increment the reference count
+        self._references += 1
+
+    def release(self):
+        # Fetch the current thread
+        current_thread = threading.current_thread()
+
+        # Make sure the thread is the locking thread
+        if current_thread != self._thread:
+            raise RuntimeError("Thread %r can't release %r" % (current_thread, self))
+
+        # Check the reference count
+        if not self._references:
+            raise RuntimeError("Already released")
+
+        # Decrement the references
+        self._references -= 1
+
+        # Check if should release lock
+        if not self._references:
+            # Clear the thread
+            self._thread = None
+
+            # Release the lock
+            self._lock.release()
+
+    def __enter__(self):
+        # Lock the lock
+        self.acquire()
+
+        # Return "self"
+        return self
+
+    def __exit__(self, *exc_info):
+        # Unlock the lock
+        self.release()
+
+    def __str__(self):
+        # Create a string representation of the lock
+        return "<%s, %d references>" % (self.__class__.__name__, self._references)

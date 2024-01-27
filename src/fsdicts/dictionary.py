@@ -1,6 +1,7 @@
 import os
 import hashlib
 
+from fsdicts.lock import Lock, RLock
 from fsdicts.bunch import MutableAttributeMapping
 from fsdicts.mapping import AdvancedMutableMapping, Mapping
 
@@ -17,6 +18,10 @@ class Dictionary(AdvancedMutableMapping):
     def __init__(self, path, storage, encoder):
         # Make the path absolute
         path = os.path.abspath(path)
+
+        # Create internal lock
+        self._lock = Lock(path)
+        self._mutex = RLock(self._lock)
 
         # Set internal variables
         self._path = path
@@ -38,88 +43,94 @@ class Dictionary(AdvancedMutableMapping):
         return Dictionary(path, (self._key_storage, self._value_storage), (self._encode, self._decode))
 
     def __getitem__(self, key):
-        # Make sure key exists
-        if key not in self:
-            raise KeyError(key)
+        # Lock the mutex
+        with self._mutex:
+            # Make sure key exists
+            if key not in self:
+                raise KeyError(key)
 
-        # Resolve item path
-        item_path = self._item_path(key)
+            # Resolve item path
+            item_path = self._item_path(key)
 
-        # Resolve value path
-        value_path = os.path.join(item_path, FILE_VALUE)
+            # Resolve value path
+            value_path = os.path.join(item_path, FILE_VALUE)
 
-        # Check if object is a simple object
-        if os.path.isdir(value_path):
-            # Create a keystore from the path
-            return self._child_instance(value_path)
-        else:
-            # Read the value, decode and return
-            return self._decode(self._value_storage.readlink(value_path))
+            # Check if object is a simple object
+            if os.path.isdir(value_path):
+                # Create a keystore from the path
+                return self._child_instance(value_path)
+            else:
+                # Read the value, decode and return
+                return self._decode(self._value_storage.readlink(value_path))
 
     def __setitem__(self, key, value):
-        # Delete the old value
-        if key in self:
-            del self[key]
+        # Lock the mutex
+        with self._mutex:
+            # Delete the old value
+            if key in self:
+                del self[key]
 
-        # Resolve item path
-        item_path = self._item_path(key)
+            # Resolve item path
+            item_path = self._item_path(key)
 
-        # Create the item path
-        os.makedirs(item_path)
+            # Create the item path
+            os.makedirs(item_path)
 
-        # Resolve value path
-        key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
+            # Resolve value path
+            key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
 
-        # Store the key in the object storage
-        key_identifier = self._key_storage.put(self._encode(key))
+            # Store the key in the object storage
+            key_identifier = self._key_storage.put(self._encode(key))
 
-        # Link the key to the translation
-        self._key_storage.link(key_identifier, key_path)
+            # Link the key to the translation
+            self._key_storage.link(key_identifier, key_path)
 
-        # Check if value is a dictionary
-        if isinstance(value, Mapping):
-            # Create the sub-dictionary
-            dictionary = self._child_instance(value_path)
+            # Check if value is a dictionary
+            if isinstance(value, Mapping):
+                # Create the sub-dictionary
+                dictionary = self._child_instance(value_path)
 
-            # Update the dictionary with the values
-            dictionary.update(value)
-        else:
-            # Store the value in the object storage
-            value_identifier = self._value_storage.put(self._encode(value))
+                # Update the dictionary with the values
+                dictionary.update(value)
+            else:
+                # Store the value in the object storage
+                value_identifier = self._value_storage.put(self._encode(value))
 
-            # Link the value to the translation
-            self._value_storage.link(value_identifier, value_path)
+                # Link the value to the translation
+                self._value_storage.link(value_identifier, value_path)
 
     def __delitem__(self, key):
-        # Make sure key exists
-        if key not in self:
-            raise KeyError(key)
+        # Lock the mutex
+        with self._mutex:
+            # Make sure key exists
+            if key not in self:
+                raise KeyError(key)
 
-        # Resolve item path
-        item_path = self._item_path(key)
+            # Resolve item path
+            item_path = self._item_path(key)
 
-        # Resolve value path
-        key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
+            # Resolve value path
+            key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
 
-        # Unlink the key object
-        self._key_storage.unlink(key_path)
+            # Unlink the key object
+            self._key_storage.unlink(key_path)
 
-        # If the value is a dictionary, clear the dictionary
-        if os.path.isdir(value_path):
-            # Create the dictionary
-            dictionary = self._child_instance(value_path)
+            # If the value is a dictionary, clear the dictionary
+            if os.path.isdir(value_path):
+                # Create the dictionary
+                dictionary = self._child_instance(value_path)
 
-            # Clear the dictionary
-            dictionary.clear()
+                # Clear the dictionary
+                dictionary.clear()
 
-            # Delete the directory - should be empty
-            os.rmdir(value_path)
-        else:
-            # Unlink the value object
-            self._value_storage.unlink(value_path)
+                # Delete the directory - should be empty
+                os.rmdir(value_path)
+            else:
+                # Unlink the value object
+                self._value_storage.unlink(value_path)
 
-        # Remove the item path
-        os.rmdir(item_path)
+            # Remove the item path
+            os.rmdir(item_path)
 
     def __contains__(self, key):
         # Resolve item path
@@ -162,20 +173,30 @@ class Dictionary(AdvancedMutableMapping):
         # Comparison succeeded
         return True
 
+    def clear(self):
+        # Lock the mutex
+        with self._mutex:
+            # Loop over keys
+            for key in self:
+                # Delete the item
+                del self[key]
+
     def pop(self, key, default=DEFAULT):
         try:
-            # Fetch the value
-            value = self[key]
+            # Lock the mutex
+            with self._mutex:
+                # Fetch the value
+                value = self[key]
 
-            # Check if the value is a keystore
-            if isinstance(value, Mapping):
-                value = value.copy()
+                # Check if the value is a keystore
+                if isinstance(value, Mapping):
+                    value = value.copy()
 
-            # Delete the item
-            del self[key]
+                # Delete the item
+                del self[key]
 
-            # Return the value
-            return value
+                # Return the value
+                return value
         except KeyError:
             # Check if a default is defined
             if default != DEFAULT:
@@ -185,18 +206,20 @@ class Dictionary(AdvancedMutableMapping):
             raise
 
     def popitem(self):
-        # Convert self to list
-        keys = list(self)
+        # Lock the mutex
+        with self._mutex:
+            # Convert self to list
+            keys = list(self)
 
-        # If the list is empty, raise
-        if not keys:
-            raise KeyError()
+            # If the list is empty, raise
+            if not keys:
+                raise KeyError()
 
-        # Pop a key from the list
-        key = keys.pop()
+            # Pop a key from the list
+            key = keys.pop()
 
-        # Return the key and the value
-        return key, self.pop(key)
+            # Return the key and the value
+            return key, self.pop(key)
 
     def copy(self):
         # Create initial bunch
@@ -217,16 +240,11 @@ class Dictionary(AdvancedMutableMapping):
         # Return the created output
         return output
 
-    def clear(self):
-        # Loop over keys
-        for key in self:
-            # Delete the item
-            del self[key]
-
 
 class AttributeDictionary(Dictionary, MutableAttributeMapping):
 
     _path = None
+    _lock, _mutex = None, None
     _encode, _decode = None, None
     _key_storage, _value_storage = None, None
 

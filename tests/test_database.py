@@ -1,6 +1,9 @@
 import pytest
+import string
+import random
 import tempfile
 import itertools
+import multiprocessing
 
 from fsdicts import *
 
@@ -179,3 +182,36 @@ def test_clear(database):
     # Make sure other does not exist
     with pytest.raises(OSError):
         assert not other
+
+
+def test_multiprocess_writes(database):
+    # Create global things
+    manager = multiprocessing.Manager()
+    exceptions = manager.list()
+
+    def stress():
+        for _ in range(100):
+            try:
+                # Create random data
+                rand = random.shuffle(list(string.ascii_letters))
+
+                # Write to database
+                database["item"] = rand
+            except BaseException as e:
+                # Append failure
+                exceptions.append(e)
+
+    # Create many stress processes
+    processes = [multiprocessing.Process(target=stress) for _ in range(10)]
+
+    # Execute all processes
+    for p in processes:
+        p.start()
+
+    # Wait for all processes
+    for p in processes:
+        p.join()
+
+    # Raise all of the exceptions
+    for e in exceptions:
+        raise e

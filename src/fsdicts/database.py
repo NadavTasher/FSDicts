@@ -18,7 +18,9 @@ def fsdict(path, encoder=JSON, dictionary=AttributeDictionary, storage=Reference
     return dictionary(os.path.join(path, "structure"), (key_storage, value_storage), encoder)
 
 
-if os.name == "posix":
+def fastdict(path):
+    # Make sure the operating system is supported
+    assert os.name == "posix", "Unsupported operating system"
 
-    def fastdict(path):
-        return fsdict(path, encoder=PYTHON, dictionary=AttributeDictionary, storage=LinkStorage)
+    # Create an attribute dict with link storage
+    return fsdict(path, encoder=PYTHON, dictionary=AttributeDictionary, storage=LinkStorage)

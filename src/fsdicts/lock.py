@@ -96,8 +96,15 @@ class TLock(Lock):
         if not os.path.isdir(LOCK_DIRECTORY):
             os.makedirs(LOCK_DIRECTORY)
 
+        # If the path is a string, encode it
+        if isinstance(path, str):
+            path = path.encode(ENCODING)
+
+        # Create hexdigest from path
+        hexdigest = hashlib.md5(path).hexdigest()
+
         # Create the lock path based on the given path
-        super(TLock, self).__init__(os.path.join(LOCK_DIRECTORY, hashlib.md5(path.encode(ENCODING)).hexdigest()))
+        super(TLock, self).__init__(os.path.join(LOCK_DIRECTORY, hexdigest))
 
 
 class RLock(object):

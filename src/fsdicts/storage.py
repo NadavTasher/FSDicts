@@ -2,7 +2,7 @@ import os
 import hashlib
 import binascii
 
-from fsdicts.lock import Lock
+from fsdicts.lock import TLock
 
 DIRECTORY_OBJECTS = "objects"
 DIRECTORY_REFERENCES = "references"
@@ -138,12 +138,13 @@ class LinkStorage(Storage):
 
 class ReferenceStorage(Storage):
 
-    def __init__(self, path, hash=hashlib.md5):
+    def __init__(self, path, hash=hashlib.md5, lock=TLock):
         # Make the path absolute
         path = os.path.abspath(path)
 
         # Intialize the path and hash
         self._hash = hash
+        self._lock = lock
 
         # Create the objects path and references path
         self._objects_path = os.path.join(path, DIRECTORY_OBJECTS)
@@ -212,7 +213,7 @@ class ReferenceStorage(Storage):
         references_path = os.path.join(self._references_path, hash)
 
         # Lock the references
-        with Lock(references_path):
+        with self._lock(references_path):
             # Append the path to the file
             with open(references_path, "a") as references_file:
                 references_file.write(link + "\n")
@@ -237,7 +238,7 @@ class ReferenceStorage(Storage):
         references_path = os.path.join(self._references_path, hash)
 
         # Lock the references
-        with Lock(references_path):
+        with self._lock(references_path):
             # Read the list of references from the file
             with open(references_path, "r") as references_file:
                 references = references_file.read().splitlines()
@@ -270,7 +271,7 @@ class ReferenceStorage(Storage):
         # If the references path exists, check references
         if os.path.isfile(references_path):
             # Lock the references
-            with Lock(references_path):
+            with self._lock(references_path):
                 # Read the list of references from the file
                 with open(references_path, "r") as references_file:
                     references = references_file.read().splitlines()

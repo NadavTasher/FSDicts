@@ -1,7 +1,7 @@
 import os
 import hashlib
 
-from fsdicts.lock import Lock, RLock
+from fsdicts.lock import TLock, RLock
 from fsdicts.bunch import MutableAttributeMapping
 from fsdicts.mapping import AdvancedMutableMapping, Mapping
 
@@ -20,7 +20,7 @@ class Dictionary(AdvancedMutableMapping):
         path = os.path.abspath(path)
 
         # Create internal lock
-        self._lock = Lock(path)
+        self._lock = TLock(path)
         self._mutex = RLock(self._lock)
 
         # Set internal variables

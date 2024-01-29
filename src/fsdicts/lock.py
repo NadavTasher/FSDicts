@@ -1,7 +1,14 @@
 import os
 import time
 import random
+import hashlib
+import tempfile
 import threading
+
+from fsdicts.encoders import ENCODING
+
+# Create the temporary lock directory path
+LOCK_DIRECTORY = os.path.join(tempfile.gettempdir(), __name__)
 
 
 class Lock(object):
@@ -16,7 +23,8 @@ class Lock(object):
     def _try_acquire(self):
         try:
             # Try creating the directory
-            os.mkdir(self._path)
+            with open(self._path, "x") as lock_file:
+                lock_file.write(str(os.getpid()))
 
             # Update lock state
             self._locked = True
@@ -60,7 +68,7 @@ class Lock(object):
             return
 
         # Try removing the directory
-        os.rmdir(self._path)
+        os.remove(self._path)
 
         # Update the lock status
         self._locked = False
@@ -79,6 +87,17 @@ class Lock(object):
     def __str__(self):
         # Create a string representation of the lock
         return "<%s, %s>" % (self.__class__.__name__, "locked" if self._locked else "unlocked")
+
+
+class TLock(Lock):
+
+    def __init__(self, path):
+        # Create the directory if it does not exist
+        if not os.path.isdir(LOCK_DIRECTORY):
+            os.makedirs(LOCK_DIRECTORY)
+
+        # Create the lock path based on the given path
+        super(TLock, self).__init__(os.path.join(LOCK_DIRECTORY, hashlib.md5(path.encode(ENCODING)).hexdigest()))
 
 
 class RLock(object):

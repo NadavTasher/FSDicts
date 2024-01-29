@@ -12,7 +12,7 @@ def test_lock():
 
     # Lock the path
     with Lock(path) as lock:
-        assert os.path.isdir(lock._path)
+        assert os.path.isfile(lock._path)
 
 
 def test_lock_multithreaded(num_threads=5, thread_sleep=0.2):

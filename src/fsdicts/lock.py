@@ -7,11 +7,8 @@ import threading
 
 from fsdicts.encoders import ENCODING
 
-# Create the temporary lock directory path
-LOCK_DIRECTORY = os.path.join(tempfile.gettempdir(), __name__)
 
-
-class Lock(object):
+class PathLock(object):
 
     def __init__(self, path):
         # Create the lock path
@@ -89,12 +86,12 @@ class Lock(object):
         return "<%s, %s>" % (self.__class__.__name__, "locked" if self._locked else "unlocked")
 
 
-class TLock(Lock):
+class LocalLock(PathLock):
 
-    def __init__(self, path):
+    def __init__(self, path, temporary_directory=os.path.join(tempfile.gettempdir(), __name__)):
         # Create the directory if it does not exist
-        if not os.path.isdir(LOCK_DIRECTORY):
-            os.makedirs(LOCK_DIRECTORY)
+        if not os.path.isdir(temporary_directory):
+            os.makedirs(temporary_directory)
 
         # If the path is a string, encode it
         if isinstance(path, str):
@@ -104,10 +101,10 @@ class TLock(Lock):
         hexdigest = hashlib.md5(path).hexdigest()
 
         # Create the lock path based on the given path
-        super(TLock, self).__init__(os.path.join(LOCK_DIRECTORY, hexdigest))
+        super(LocalLock, self).__init__(os.path.join(temporary_directory, hexdigest))
 
 
-class RLock(object):
+class ReferenceLock(object):
 
     def __init__(self, lock):
         # Initialize the internal lock

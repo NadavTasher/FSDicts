@@ -1,8 +1,6 @@
 import os
 import hashlib
-import contextlib
 
-from fsdicts.lock import TLock, RLock
 from fsdicts.bunch import MutableAttributeMapping
 from fsdicts.mapping import AdvancedMutableMapping, Mapping
 

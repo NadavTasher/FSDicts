@@ -2,7 +2,7 @@ import os
 import hashlib
 import binascii
 
-from fsdicts.lock import TLock
+from fsdicts.lock import LocalLock, PathLock
 
 DIRECTORY_OBJECTS = "objects"
 DIRECTORY_REFERENCES = "references"
@@ -10,7 +10,7 @@ DIRECTORY_REFERENCES = "references"
 
 class Storage(object):
 
-    def __init__(self, path):
+    def __init__(self, path, lock):
         raise NotImplementedError()
 
     def put(self, value):
@@ -37,7 +37,7 @@ class Storage(object):
 
 class LinkStorage(Storage):
 
-    def __init__(self, path, hash=hashlib.md5):
+    def __init__(self, path, hash=hashlib.md5, lock=LocalLock):
         # Make the path absolute
         path = os.path.abspath(path)
 
@@ -138,7 +138,7 @@ class LinkStorage(Storage):
 
 class ReferenceStorage(Storage):
 
-    def __init__(self, path, hash=hashlib.md5, lock=TLock):
+    def __init__(self, path, hash=hashlib.md5, lock=PathLock):
         # Make the path absolute
         path = os.path.abspath(path)
 

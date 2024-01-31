@@ -33,17 +33,17 @@ class Dictionary(AdvancedMutableMapping):
     def _child_instance(self, path):
         return Dictionary(path, (self._key_storage, self._value_storage), (self._encode, self._decode), self._lock)
 
-    def _internal_has_item(self, key):
+    def _internal_hasitem(self, key):
         # Resolve item path
         item_path = self._item_path(key)
 
         # Check if paths exist
         return os.path.isdir(item_path)
 
-    def _internal_set_item(self, key, value):
+    def _internal_setitem(self, key, value):
         # Delete the old value
-        if self._internal_has_item(key):
-            self._internal_del_item(key)
+        if self._internal_hasitem(key):
+            self._internal_delitem(key)
 
         # Resolve item path
         item_path = self._item_path(key)
@@ -74,9 +74,9 @@ class Dictionary(AdvancedMutableMapping):
             # Link the value to the translation
             self._value_storage.link(value_identifier, value_path)
 
-    def _internal_get_item(self, key):
+    def _internal_getitem(self, key):
         # Make sure key exists
-        if not self._internal_has_item(key):
+        if not self._internal_hasitem(key):
             raise KeyError(key)
 
         # Resolve item path
@@ -93,9 +93,9 @@ class Dictionary(AdvancedMutableMapping):
             # Read the value, decode and return
             return self._decode(self._value_storage.readlink(value_path))
 
-    def _internal_del_item(self, key):
+    def _internal_delitem(self, key):
         # Make sure key exists
-        if not self._internal_has_item(key):
+        if not self._internal_hasitem(key):
             raise KeyError(key)
 
         # Resolve item path
@@ -137,7 +137,7 @@ class Dictionary(AdvancedMutableMapping):
 
         # Lock the item for modifications
         with self._lock(item_path):
-            return self._internal_get_item(key)
+            return self._internal_getitem(key)
 
     def __setitem__(self, key, value):
         # Resolve item path
@@ -145,7 +145,7 @@ class Dictionary(AdvancedMutableMapping):
 
         # Lock the item for modifications
         with self._lock(item_path):
-            return self._internal_set_item(key, value)
+            return self._internal_setitem(key, value)
 
     def __delitem__(self, key):
         # Resolve item path
@@ -153,7 +153,7 @@ class Dictionary(AdvancedMutableMapping):
 
         # Lock the item for modifications
         with self._lock(item_path):
-            return self._internal_del_item(key)
+            return self._internal_delitem(key)
 
     def __contains__(self, key):
         # Resolve item path
@@ -161,7 +161,7 @@ class Dictionary(AdvancedMutableMapping):
 
         # Check if paths exist
         with self._lock(item_path):
-            return self._internal_has_item(key)
+            return self._internal_hasitem(key)
 
     def __iter__(self):
         # List all of the items in the path
@@ -209,14 +209,14 @@ class Dictionary(AdvancedMutableMapping):
             # Check if paths exist
             with self._lock(item_path):
                 # Fetch the value
-                value = self._internal_get_item(key)
+                value = self._internal_getitem(key)
 
                 # Check if the value is a keystore
                 if isinstance(value, Mapping):
                     value = value.copy()
 
                 # Delete the item
-                self._internal_del_item(key)
+                self._internal_delitem(key)
 
             # Return the value
             return value

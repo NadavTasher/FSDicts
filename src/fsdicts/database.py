@@ -12,16 +12,25 @@ def fsdict(path, encoder=JSON, dictionary=AttributeDictionary, storage=Reference
         os.makedirs(path)
 
     # Initialize the storage object
-    key_storage = storage(os.path.join(path, "keys"))
-    value_storage = storage(os.path.join(path, "values"))
+    key_storage = storage(os.path.join(path, "keys"), lock=lock)
+    value_storage = storage(os.path.join(path, "values"), lock=lock)
 
     # Initialize the keystore with objects path and a rainbow table
     return dictionary(os.path.join(path, "structure"), (key_storage, value_storage), encoder, lock)
 
 
+def localdict(path, encoder=JSON):
+    # Pick the best locks and storage for use-case
+    if os.name == "posix":
+        return fsdict(path, encoder=encoder, dictionary=AttributeDictionary, storage=LinkStorage, lock=LocalLock)
+    else:
+        return fsdict(path, encoder=encoder, dictionary=AttributeDictionary, storage=ReferenceStorage, lock=LocalLock)
+
+
 def fastdict(path):
     # Make sure the operating system is supported
-    assert os.name == "posix", "Unsupported operating system"
+    if os.name != "posix":
+        raise NotImplementedError("Unsupported operating system")
 
     # Create an attribute dict with link storage
-    return fsdict(path, encoder=PYTHON, dictionary=AttributeDictionary, storage=LinkStorage, lock=LocalLock)
+    return localdict(path, encoder=PYTHON)

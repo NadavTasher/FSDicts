@@ -1,12 +1,12 @@
 import os
 
-from fsdicts.lock import PathLock, LocalLock
+from fsdicts.lock import FileLock, LocalLock
 from fsdicts.encoders import JSON, PYTHON
 from fsdicts.storage import ReferenceStorage, LinkStorage
 from fsdicts.dictionary import AttributeDictionary
 
 
-def fsdict(path, encoder=JSON, dictionary=AttributeDictionary, storage=ReferenceStorage, lock=PathLock):
+def fsdict(path, encoder=JSON, dictionary=AttributeDictionary, storage=ReferenceStorage, lock=FileLock):
     # Create the directory
     if not os.path.exists(path):
         os.makedirs(path)

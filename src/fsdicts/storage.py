@@ -2,7 +2,7 @@ import os
 import hashlib
 import binascii
 
-from fsdicts.lock import LocalLock, PathLock
+from fsdicts.lock import LocalLock, FileLock
 
 DIRECTORY_OBJECTS = "objects"
 DIRECTORY_REFERENCES = "references"
@@ -138,7 +138,7 @@ class LinkStorage(Storage):
 
 class ReferenceStorage(Storage):
 
-    def __init__(self, path, hash=hashlib.md5, lock=PathLock):
+    def __init__(self, path, hash=hashlib.md5, lock=FileLock):
         # Make the path absolute
         path = os.path.abspath(path)
 

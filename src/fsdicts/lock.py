@@ -8,7 +8,7 @@ import threading
 from fsdicts.encoders import ENCODING
 
 
-class PathLock(object):
+class FileLock(object):
 
     def __init__(self, path):
         # Create the lock path
@@ -86,7 +86,7 @@ class PathLock(object):
         return "<%s, %s>" % (self.__class__.__name__, "locked" if self._locked else "unlocked")
 
 
-class LocalLock(PathLock):
+class LocalLock(FileLock):
 
     def __init__(self, path, temporary_directory=os.path.join(tempfile.gettempdir(), __name__)):
         # Create the directory if it does not exist

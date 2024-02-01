@@ -33,6 +33,19 @@ class Dictionary(AdvancedMutableMapping):
     def _child_instance(self, path):
         return Dictionary(path, (self._key_storage, self._value_storage), (self._encode, self._decode), self._lock)
 
+    def _internal_iter(self):
+        # List all of the items in the path
+        for checksum in os.listdir(self._path):
+            # Create key path
+            key_path = os.path.join(self._path, checksum, FILE_KEY)
+
+            # Make sure the key path exists
+            if not os.path.isfile(key_path):
+                continue
+
+            # Yield the checksum
+            yield checksum, key_path
+
     def _internal_hasitem(self, key):
         # Resolve item path
         item_path = self._item_path(key)
@@ -55,10 +68,7 @@ class Dictionary(AdvancedMutableMapping):
         key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
 
         # Store the key in the object storage
-        key_identifier = self._key_storage.put(self._encode(key))
-
-        # Link the key to the translation
-        self._key_storage.link(key_identifier, key_path)
+        self._key_storage.put(self._encode(key), key_path)
 
         # Check if value is a dictionary
         if isinstance(value, Mapping):
@@ -69,10 +79,7 @@ class Dictionary(AdvancedMutableMapping):
             dictionary.update(value)
         else:
             # Store the value in the object storage
-            value_identifier = self._value_storage.put(self._encode(value))
-
-            # Link the value to the translation
-            self._value_storage.link(value_identifier, value_path)
+            self._value_storage.put(self._encode(value), value_path)
 
     def _internal_getitem(self, key):
         # Make sure key exists
@@ -165,10 +172,7 @@ class Dictionary(AdvancedMutableMapping):
 
     def __iter__(self):
         # List all of the items in the path
-        for checksum in os.listdir(self._path):
-            # Create key path
-            key_path = os.path.join(self._path, checksum, FILE_KEY)
-
+        for checksum, key_path in self._internal_iter():
             # Read the key contents and decode
             with self._lock(os.path.join(self._path, checksum)):
                 key_contents = self._decode(self._key_storage.readlink(key_path))
@@ -178,7 +182,7 @@ class Dictionary(AdvancedMutableMapping):
 
     def __len__(self):
         # Count all key files
-        return len(os.listdir(self._path))
+        return len(list(self._internal_iter()))
 
     def __repr__(self):
         # Format the data like a dictionary

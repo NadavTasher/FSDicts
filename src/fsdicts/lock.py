@@ -19,9 +19,8 @@ class FileLock(object):
 
     def _try_acquire(self):
         try:
-            # Try creating the directory
-            with open(self._path, "x") as lock_file:
-                lock_file.write(str(os.getpid()))
+            # Try creating the file
+            open(self._path, "x").close()
 
             # Update lock state
             self._locked = True

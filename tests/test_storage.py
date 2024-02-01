@@ -1,9 +1,9 @@
-import os
 import pytest
 import shutil
 import hashlib
 import tempfile
 import itertools
+import multiprocessing
 
 from fsdicts import *
 
@@ -91,3 +91,38 @@ def test_readlink_purge(storage):
     # Try reading the original reference
     with pytest.raises((OSError, IOError)):
         storage.readlink(reference_path)
+
+
+def test_multiprocess_writes(storage):
+    # Create global things
+    manager = multiprocessing.Manager()
+    exceptions = manager.list()
+
+    def stress():
+        for _ in range(100):
+            try:
+                # Create random data
+                content = b"A" * 1024 * 1024
+
+                # Write to database
+                link = tempfile.mktemp()
+                identifier = storage.put(content, link)
+                storage.unlink(link)
+            except BaseException as e:
+                # Append failure
+                exceptions.append(e)
+
+    # Create many stress processes
+    processes = [multiprocessing.Process(target=stress) for _ in range(10)]
+
+    # Execute all processes
+    for p in processes:
+        p.start()
+
+    # Wait for all processes
+    for p in processes:
+        p.join()
+
+    # Raise all of the exceptions
+    for e in exceptions:
+        raise e

@@ -2,7 +2,7 @@
 from fsdicts.encoders import JSON, PYTHON
 
 # Constructor functions
-from fsdicts.database import fsdict, fastdict
+from fsdicts.database import fsdict, localdict
 
 # Underlaying classes
 from fsdicts.lock import FileLock, LocalLock, ReferenceLock

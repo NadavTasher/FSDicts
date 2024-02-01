@@ -19,18 +19,9 @@ def fsdict(path, encoder=JSON, dictionary=AttributeDictionary, storage=Reference
     return dictionary(os.path.join(path, "structure"), (key_storage, value_storage), encoder, lock)
 
 
-def localdict(path, encoder=JSON):
+def localdict(path, encoder=PYTHON):
     # Pick the best locks and storage for use-case
     if os.name == "posix":
         return fsdict(path, encoder=encoder, dictionary=AttributeDictionary, storage=LinkStorage, lock=LocalLock)
     else:
         return fsdict(path, encoder=encoder, dictionary=AttributeDictionary, storage=ReferenceStorage, lock=LocalLock)
-
-
-def fastdict(path):
-    # Make sure the operating system is supported
-    if os.name != "posix":
-        raise NotImplementedError("Unsupported operating system")
-
-    # Create an attribute dict with link storage
-    return localdict(path, encoder=PYTHON)

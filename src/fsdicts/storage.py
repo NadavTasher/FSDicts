@@ -35,6 +35,10 @@ class Storage(object):
 class LinkStorage(Storage):
 
     def __init__(self, path, lock=LocalLock, hash=hashlib.md5):
+        # Make sure the operating system is supported
+        if os.name != "posix":
+            raise NotImplementedError("Unsupported operating system")
+
         # Make the path absolute
         path = os.path.abspath(path)
 

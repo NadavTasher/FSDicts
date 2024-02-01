@@ -10,8 +10,8 @@ def test_lock():
     # Create path to lock on
     path = tempfile.mktemp()
 
-    # Lock the path
-    with Lock(path) as lock:
+    # FileLock the path
+    with FileLock(path) as lock:
         assert os.path.isfile(lock._path)
 
 
@@ -21,7 +21,7 @@ def test_lock_multithreaded(num_threads=5, thread_sleep=0.2):
 
     def target(path, sleep):
         # Try locking the path
-        with Lock(path):
+        with FileLock(path):
             time.sleep(sleep)
 
     # Create threads
@@ -44,7 +44,7 @@ def test_lock_multithreaded(num_threads=5, thread_sleep=0.2):
 def test_lock_multithreaded_samelock(num_threads=5, thread_sleep=0.2):
     # Create path to lock on
     path = tempfile.mktemp()
-    lock = Lock(path)
+    lock = FileLock(path)
 
     def target(lock, sleep):
         # Try locking the path
@@ -73,7 +73,7 @@ def test_lock_nonblocking():
     path = tempfile.mktemp()
 
     # Create the lock
-    lock = Lock(path)
+    lock = FileLock(path)
 
     # Try locking the lock
     assert lock.acquire(False)
@@ -100,10 +100,10 @@ def test_rlock_references():
     path = tempfile.mktemp()
 
     # Create the lock
-    lock = Lock(path)
-    mutex = RLock(lock)
+    lock = FileLock(path)
+    mutex = ReferenceLock(lock)
 
-    # Lock the lock multiple times
+    # FileLock the lock multiple times
     with mutex:
         with mutex:
             with mutex:
@@ -118,8 +118,8 @@ def test_rlock_multithreaded_samelock(num_threads=5, thread_sleep=0.2):
     path = tempfile.mktemp()
 
     # Create the lock
-    lock = Lock(path)
-    mutex = RLock(lock)
+    lock = FileLock(path)
+    mutex = ReferenceLock(lock)
 
     def target(mutex, number):
         # Try locking the path

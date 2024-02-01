@@ -8,12 +8,12 @@ import multiprocessing
 from fsdicts import *
 
 
-@pytest.fixture(params=itertools.product([PYTHON, JSON], [Dictionary, AttributeDictionary], [LinkStorage, ReferenceStorage]))
+@pytest.fixture(params=itertools.product([PYTHON, JSON], [Dictionary, AttributeDictionary], [LinkStorage, ReferenceStorage], [LocalLock, FileLock]))
 def database(request):
     return fsdict(tempfile.mktemp(), *request.param)
 
 
-@pytest.fixture(params=itertools.product([PYTHON, JSON], [AttributeDictionary], [LinkStorage, ReferenceStorage]))
+@pytest.fixture(params=itertools.product([PYTHON, JSON], [AttributeDictionary], [LinkStorage, ReferenceStorage], [LocalLock, FileLock]))
 def bunch_database(request):
     return fsdict(tempfile.mktemp(), *request.param)
 

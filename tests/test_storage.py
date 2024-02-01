@@ -1,14 +1,20 @@
 import os
 import pytest
 import shutil
+import hashlib
 import tempfile
+import itertools
 
 from fsdicts import *
 
 
-@pytest.fixture(params=[LinkStorage, ReferenceStorage])
+@pytest.fixture(params=itertools.product([LinkStorage, ReferenceStorage], [hashlib.md5, hashlib.sha1, hashlib.sha256, hashlib.sha512], [LocalLock, FileLock]))
 def storage(request):
-    return request.param(tempfile.mktemp())
+    # Untuple the parameters
+    storage_type, hash_type, lock_type = request.param
+
+    # Create the storage
+    return storage_type(tempfile.mktemp(), hash=hash_type, lock=lock_type)
 
 
 def test_put(storage):

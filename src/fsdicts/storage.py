@@ -2,15 +2,12 @@ import os
 import hashlib
 import binascii
 
-from fsdicts.lock import Lock
-
-DIRECTORY_OBJECTS = "objects"
-DIRECTORY_REFERENCES = "references"
+from fsdicts.lock import LocalLock, FileLock
 
 
 class Storage(object):
 
-    def __init__(self, path):
+    def __init__(self, path, lock):
         raise NotImplementedError()
 
     def put(self, value):
@@ -37,12 +34,13 @@ class Storage(object):
 
 class LinkStorage(Storage):
 
-    def __init__(self, path, hash=hashlib.md5):
+    def __init__(self, path, lock=LocalLock, hash=hashlib.md5):
         # Make the path absolute
         path = os.path.abspath(path)
 
         # Intialize the path and hash
         self._path = path
+        self._lock = lock
         self._hash = hash
 
         # Create the path if needed
@@ -82,8 +80,10 @@ class LinkStorage(Storage):
         return value
 
     def link(self, identifier, link):
-        # Link the identifier and the link
-        os.link(identifier, link)
+        # Lock the identifier
+        with self._lock(identifier):
+            # Link the identifier and the link
+            os.link(identifier, link)
 
     def unlink(self, link):
         # Check whether the path exists
@@ -111,12 +111,14 @@ class LinkStorage(Storage):
         if not os.path.isfile(identifier):
             raise ValueError(identifier)
 
-        # If more then one link exists, skip
-        if os.stat(identifier).st_nlink > 1:
-            return
+        # Lock the identifier
+        with self._lock(identifier):
+            # If more then one link exists, skip
+            if os.stat(identifier).st_nlink > 1:
+                return
 
-        # Remove the file
-        os.remove(identifier)
+            # Remove the file
+            os.remove(identifier)
 
     def purge(self):
         # List all files in the storage and check the link count
@@ -138,16 +140,17 @@ class LinkStorage(Storage):
 
 class ReferenceStorage(Storage):
 
-    def __init__(self, path, hash=hashlib.md5):
+    def __init__(self, path, lock=FileLock, hash=hashlib.md5):
         # Make the path absolute
         path = os.path.abspath(path)
 
         # Intialize the path and hash
+        self._lock = lock
         self._hash = hash
 
         # Create the objects path and references path
-        self._objects_path = os.path.join(path, DIRECTORY_OBJECTS)
-        self._references_path = os.path.join(path, DIRECTORY_REFERENCES)
+        self._objects_path = os.path.join(path, "objects")
+        self._references_path = os.path.join(path, "references")
 
         # Create the objects directory if needed
         if not os.path.isdir(self._objects_path):
@@ -212,14 +215,14 @@ class ReferenceStorage(Storage):
         references_path = os.path.join(self._references_path, hash)
 
         # Lock the references
-        with Lock(references_path):
+        with self._lock(references_path):
             # Append the path to the file
             with open(references_path, "a") as references_file:
                 references_file.write(link + "\n")
 
-        # Write the link file
-        with open(link, "w") as file:
-            file.write(hash)
+            # Write the link file
+            with open(link, "w") as file:
+                file.write(hash)
 
     def unlink(self, link):
         # Read the link file
@@ -237,7 +240,7 @@ class ReferenceStorage(Storage):
         references_path = os.path.join(self._references_path, hash)
 
         # Lock the references
-        with Lock(references_path):
+        with self._lock(references_path):
             # Read the list of references from the file
             with open(references_path, "r") as references_file:
                 references = references_file.read().splitlines()
@@ -250,8 +253,8 @@ class ReferenceStorage(Storage):
                 for reference in references:
                     references_file.write(reference + "\n")
 
-        # Remove the link path
-        os.remove(link)
+            # Remove the link path
+            os.remove(link)
 
         # Release the object
         self.release(hash)
@@ -270,7 +273,7 @@ class ReferenceStorage(Storage):
         # If the references path exists, check references
         if os.path.isfile(references_path):
             # Lock the references
-            with Lock(references_path):
+            with self._lock(references_path):
                 # Read the list of references from the file
                 with open(references_path, "r") as references_file:
                     references = references_file.read().splitlines()

@@ -4,9 +4,6 @@ import binascii
 
 from fsdicts.lock import LocalLock, FileLock
 
-DIRECTORY_OBJECTS = "objects"
-DIRECTORY_REFERENCES = "references"
-
 
 class Storage(object):
 
@@ -152,8 +149,8 @@ class ReferenceStorage(Storage):
         self._hash = hash
 
         # Create the objects path and references path
-        self._objects_path = os.path.join(path, DIRECTORY_OBJECTS)
-        self._references_path = os.path.join(path, DIRECTORY_REFERENCES)
+        self._objects_path = os.path.join(path, "objects")
+        self._references_path = os.path.join(path, "references")
 
         # Create the objects directory if needed
         if not os.path.isdir(self._objects_path):

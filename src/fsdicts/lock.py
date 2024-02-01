@@ -20,7 +20,7 @@ class FileLock(object):
     def _try_acquire(self):
         try:
             # Try creating the file
-            open(self._path, "x").close()
+            os.mkdir(self._path)
 
             # Update lock state
             self._locked = True
@@ -64,7 +64,7 @@ class FileLock(object):
             return
 
         # Try removing the directory
-        os.remove(self._path)
+        os.rmdir(self._path)
 
         # Update the lock status
         self._locked = False

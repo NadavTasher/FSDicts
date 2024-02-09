@@ -1,4 +1,7 @@
+import os
+import time
 import pytest
+import shutil
 import string
 import random
 import tempfile
@@ -184,19 +187,17 @@ def test_clear(database):
         assert not other
 
 
-def test_multiprocess_writes(database):
+def test_multiprocess_rewrites(database):
     # Create global things
     manager = multiprocessing.Manager()
     exceptions = manager.list()
 
-    def stress():
-        for _ in range(100):
-            try:
-                # Create random data
-                rand = random.shuffle(list(string.ascii_letters))
+    large_dictionary = {"".join(random.sample(list(string.ascii_letters), 10)): "".join(random.sample(list(string.ascii_letters), 10)) for _ in range(100)}
 
-                # Write to database
-                database["item"] = rand
+    def stress():
+        for _ in range(10):
+            try:
+                database.update(large_dictionary)
             except BaseException as e:
                 # Append failure
                 exceptions.append(e)
@@ -211,6 +212,58 @@ def test_multiprocess_writes(database):
     # Wait for all processes
     for p in processes:
         p.join()
+
+    # Raise all of the exceptions
+    for e in exceptions:
+        raise e
+
+
+def test_multiprocess_partial_writes(database):
+    # Create global things
+    manager = multiprocessing.Manager()
+    exceptions = manager.list()
+
+    tmp_lock_directory = os.path.join(tempfile.gettempdir(), __name__)
+
+    large_dictionary = {"".join(random.sample(list(string.ascii_letters), 10)): "".join(random.sample(list(string.ascii_letters), 10)) for _ in range(100)}
+
+    def stress():
+        for _ in range(10):
+            try:
+                database.update(large_dictionary)
+            except BaseException as e:
+                # Append failure
+                exceptions.append(e)
+
+    # Create many stress processes
+    processes = [multiprocessing.Process(target=stress) for _ in range(10)]
+
+    # Execute all processes
+    for p in processes:
+        p.start()
+
+    for p in processes:
+        # Sleep random amount
+        time.sleep(random.random() / 1000.0)
+
+        # Kill the process
+        p.kill()
+
+        # Clear all locks
+        shutil.rmtree(tmp_lock_directory, ignore_errors=True)
+
+    # Clear all locks
+    shutil.rmtree(tmp_lock_directory, ignore_errors=True)
+
+    # Wait for all processes
+    for p in processes:
+        p.join()
+
+    # Clear all locks
+    shutil.rmtree(tmp_lock_directory, ignore_errors=True)
+
+    # Check database integrity
+    data = database.copy()
 
     # Raise all of the exceptions
     for e in exceptions:

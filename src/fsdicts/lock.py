@@ -32,6 +32,13 @@ class FileLock(object):
             # Locking failed
             return False
 
+    def _try_release(self):
+        # Try removing the directory
+        os.rmdir(self._path)
+
+        # Update the lock status
+        self._locked = False
+
     def locked(self):
         return self._locked
 
@@ -64,11 +71,8 @@ class FileLock(object):
         if not self._locked:
             return
 
-        # Try removing the directory
-        os.rmdir(self._path)
-
-        # Update the lock status
-        self._locked = False
+        # Try releasing the lock
+        self._try_release()
 
     def __enter__(self):
         # Lock the lock
@@ -124,12 +128,23 @@ class TimeoutLock(FileLock):
             # Locking succeeded
             return True
         except OSError:
-            # Check whether the creation time of the path is old
-            if time.time() - os.path.getctime(self._path) > self._timeout:
-                shutil.rmtree(self._path, ignore_errors=True)
+            try:
+                # Check whether the creation time of the path is old
+                if time.time() - os.path.getctime(self._path) > self._timeout:
+                    self._try_release()
+            except OSError:
+                # Nothing to do
+                pass
 
             # Locking failed
             return False
+
+    def _try_release(self):
+        # Remove the directory
+        shutil.rmtree(self._path, ignore_errors=True)
+
+        # Set the lock state
+        self._locked = False
 
 
 class ReferenceLock(object):

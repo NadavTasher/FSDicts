@@ -142,3 +142,22 @@ def test_rlock_multithreaded_samelock(num_threads=5, thread_sleep=0.2):
 
     # Make sure end time is larger then start time by more then num_threads * thread_sleep
     assert (time.time() - start) > float(num_threads * thread_sleep)
+
+
+def test_timeout_lock():
+    # Create path to lock on
+    path = tempfile.mktemp()
+
+    # Create the lock
+    lock = TimeoutLock(path, 4)
+
+    # Try locking the lock
+    time_a = time.time()
+    lock.acquire()
+    time_b = time.time()
+    lock.acquire()
+    time_c = time.time()
+
+    # Make sure the times allign
+    assert time_b - time_a < 1
+    assert time_c - time_b > 3

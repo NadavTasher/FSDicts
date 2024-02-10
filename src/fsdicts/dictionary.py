@@ -33,6 +33,9 @@ class Dictionary(AdvancedMutableMapping):
     def _child_instance(self, path):
         return Dictionary(path, (self._key_storage, self._value_storage), (self._encode, self._decode), self._lock)
 
+    def _internal_move_temporary(self):
+        pass
+
     def _internal_iter(self):
         # List all of the items in the path
         for checksum in os.listdir(self._path):

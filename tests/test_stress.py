@@ -123,10 +123,10 @@ def test_database_multiprocess_kill_during_write(database):
     for p in processes:
         p.start()
 
-    for p in processes:
-        # Sleep random amount
-        time.sleep(random.random() / 10.0)
+    # Sleep random amount
+    time.sleep(random.random())
 
+    for p in processes:
         # Kill the process
         p.kill()
 

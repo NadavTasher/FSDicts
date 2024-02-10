@@ -13,6 +13,9 @@ class Storage(object):
     def put(self, value, link=None):
         raise NotImplementedError()
 
+    def islink(self, link):
+        raise NotImplementedError()
+
     def readlink(self, link):
         raise NotImplementedError()
 
@@ -30,6 +33,52 @@ class Storage(object):
 
     def __len__(self):
         raise NotImplementedError()
+
+
+class NoStorage(Storage):
+
+    def __init__(self, *args, **kwargs):
+        # Initialize a counter
+        self._counter = 0
+
+    def put(self, value, link=None):
+        # Link the value if needed
+        if link:
+            self.link(value, link)
+
+        # Increment the counter
+        self._counter += 1
+
+        # Return the value as the identifier
+        return value
+
+    def islink(self, link):
+        return os.path.isfile(link)
+
+    def readlink(self, link):
+        # Read the file
+        with open(link, "rb") as file:
+            return file.read()
+
+    def link(self, identifier, link):
+        # Write the identifier (value) to the link
+        with open(link, "wb") as file:
+            file.write(identifier)
+
+    def unlink(self, link):
+        # Remove the file
+        os.remove(link)
+
+    def release(self, identifier):
+        # Decrement the counter
+        self._counter -= 1
+
+    def purge(self):
+        # Reset the counter
+        self._counter = 0
+
+    def __len__(self):
+        return self._counter
 
 
 class LinkStorage(Storage):
@@ -94,6 +143,10 @@ class LinkStorage(Storage):
 
         # Return the hash
         return path
+
+    def islink(self, link):
+        # Check whether the file exists
+        return os.path.isfile(link)
 
     def readlink(self, link):
         # Read the identifier as a file
@@ -269,6 +322,18 @@ class ReferenceStorage(Storage):
         # Return the hash
         return hash
 
+    def islink(self, link):
+        # If the file does not exist, not a valid link
+        if not os.path.isfile(link):
+            return False
+
+        # If the file is empty, not a valid link
+        if not os.path.getsize(link):
+            return False
+
+        # Valid link
+        return True
+
     def readlink(self, link):
         # Read the link file
         with open(link, "r") as file:
@@ -304,17 +369,17 @@ class ReferenceStorage(Storage):
             return self._internal_link(hash, link)
 
     def unlink(self, link):
-        # Read the link file
-        with open(link, "r") as file:
-            hash = file.read()
-
-        # If the link is empty, just delete the file
-        if not hash:
+        # Check whether the link is valid
+        if not self.islink(link) and os.path.isfile(link):
             # Remove the link
             os.remove(link)
 
             # Nothing more to do
             return
+
+        # Read the link file
+        with open(link, "r") as file:
+            hash = file.read()
 
         # Create the object path
         object_path = os.path.join(self._objects_path, hash)

@@ -39,13 +39,18 @@ class Dictionary(AdvancedMutableMapping):
             # Create key and value paths
             key_path, value_path = os.path.join(self._path, checksum, FILE_KEY), os.path.join(self._path, checksum, FILE_VALUE)
 
-            # Make sure the key path exists
-            if not os.path.exists(key_path):
+            # Make sure the key path exists and is a valid link
+            if not self._key_storage.islink(key_path):
                 continue
 
             # Make sure the value path exists
             if not os.path.exists(value_path):
                 continue
+
+            # If the value path is a file, should also be a link
+            if os.path.isfile(value_path):
+                if not self._value_storage.islink(value_path):
+                    continue
 
             # Yield the checksum
             yield checksum, key_path
@@ -57,8 +62,21 @@ class Dictionary(AdvancedMutableMapping):
         # Resolve value path
         key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
 
+        # Make sure the key path exists and is a valid link
+        if not self._key_storage.islink(key_path):
+            return False
+
+        # Make sure the value path exists
+        if not os.path.exists(value_path):
+            return False
+
+        # If the value path is a file, should also be a link
+        if os.path.isfile(value_path):
+            if not self._value_storage.islink(value_path):
+                return False
+
         # Check if paths exist
-        return os.path.isdir(item_path) and os.path.exists(key_path) and os.path.exists(value_path)
+        return os.path.isdir(item_path)
 
     def _internal_setitem(self, key, value):
         # Delete the old value

@@ -8,7 +8,7 @@ import multiprocessing
 from fsdicts import *
 
 
-@pytest.fixture(params=itertools.product([LinkStorage, ReferenceStorage], [hashlib.md5, hashlib.sha1, hashlib.sha256, hashlib.sha512], [TemporaryLock, DirectoryLock]))
+@pytest.fixture(params=itertools.product([NoStorage, LinkStorage, ReferenceStorage], [hashlib.md5, hashlib.sha1, hashlib.sha256, hashlib.sha512], [TimeoutLock, TemporaryLock, DirectoryLock]))
 def storage(request):
     # Untuple the parameters
     storage_type, hash_type, lock_type = request.param
@@ -40,6 +40,10 @@ def test_purge(storage):
 
 
 def test_usage_purge(storage):
+    # Skip if storage is a no storage
+    if isinstance(storage, NoStorage):
+        return
+
     # Create target reference path
     reference_path = tempfile.mktemp()
 

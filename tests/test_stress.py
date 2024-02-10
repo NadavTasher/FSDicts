@@ -89,12 +89,12 @@ def test_database_kill_during_write(database):
     process.start()
 
     # Sleep random amount
-    time.sleep(random.random() / 100.0)
+    time.sleep(random.random())
 
     # Kill the process
     process.kill()
 
-    # Join the process
+    # Wait for the process to stop
     process.join()
 
     # Check database integrity

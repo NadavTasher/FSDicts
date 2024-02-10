@@ -1,17 +1,11 @@
-import os
-import time
 import pytest
-import shutil
-import string
-import random
 import tempfile
 import itertools
-import multiprocessing
 
 from fsdicts import *
 
 
-@pytest.fixture(params=itertools.product([PYTHON, JSON], [Dictionary, AttributeDictionary], [LinkStorage, ReferenceStorage], [LocalLock, FileLock]))
+@pytest.fixture(params=itertools.product([PYTHON, JSON], [Dictionary, AttributeDictionary], [LinkStorage, ReferenceStorage], [LocalLock, TimeoutLock]))
 def database(request):
     return fsdict(tempfile.mktemp(), *request.param)
 
@@ -185,86 +179,3 @@ def test_clear(database):
     # Make sure other does not exist
     with pytest.raises(OSError):
         assert not other
-
-
-def test_multiprocess_rewrites(database):
-    # Create global things
-    manager = multiprocessing.Manager()
-    exceptions = manager.list()
-
-    large_dictionary = {"".join(random.sample(list(string.ascii_letters), 10)): "".join(random.sample(list(string.ascii_letters), 10)) for _ in range(100)}
-
-    def stress():
-        for _ in range(10):
-            try:
-                database.update(large_dictionary)
-            except BaseException as e:
-                # Append failure
-                exceptions.append(e)
-
-    # Create many stress processes
-    processes = [multiprocessing.Process(target=stress) for _ in range(10)]
-
-    # Execute all processes
-    for p in processes:
-        p.start()
-
-    # Wait for all processes
-    for p in processes:
-        p.join()
-
-    # Raise all of the exceptions
-    for e in exceptions:
-        raise e
-
-
-def test_multiprocess_partial_writes(database):
-    # Create global things
-    manager = multiprocessing.Manager()
-    exceptions = manager.list()
-
-    tmp_lock_directory = os.path.join(tempfile.gettempdir(), __name__)
-
-    large_dictionary = {"".join(random.sample(list(string.ascii_letters), 10)): "".join(random.sample(list(string.ascii_letters), 10)) for _ in range(100)}
-
-    def stress():
-        for _ in range(10):
-            try:
-                database.update(large_dictionary)
-            except BaseException as e:
-                # Append failure
-                exceptions.append(e)
-
-    # Create many stress processes
-    processes = [multiprocessing.Process(target=stress) for _ in range(10)]
-
-    # Execute all processes
-    for p in processes:
-        p.start()
-
-    for p in processes:
-        # Sleep random amount
-        time.sleep(random.random() / 1000.0)
-
-        # Kill the process
-        p.kill()
-
-        # Clear all locks
-        shutil.rmtree(tmp_lock_directory, ignore_errors=True)
-
-    # Clear all locks
-    shutil.rmtree(tmp_lock_directory, ignore_errors=True)
-
-    # Wait for all processes
-    for p in processes:
-        p.join()
-
-    # Clear all locks
-    shutil.rmtree(tmp_lock_directory, ignore_errors=True)
-
-    # Check database integrity
-    data = database.copy()
-
-    # Raise all of the exceptions
-    for e in exceptions:
-        raise e

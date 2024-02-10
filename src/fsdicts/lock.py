@@ -1,5 +1,6 @@
 import os
 import time
+import shutil
 import random
 import hashlib
 import tempfile
@@ -101,6 +102,34 @@ class LocalLock(FileLock):
 
         # Create the lock path based on the given path
         super(LocalLock, self).__init__(os.path.join(temporary_directory, hexdigest))
+
+
+class TimeoutLock(FileLock):
+
+    def __init__(self, path, timeout=60):
+        # Initialize the parent
+        super(TimeoutLock, self).__init__(path)
+
+        # Set the internal timeout
+        self._timeout = timeout
+
+    def _try_acquire(self):
+        try:
+            # Try creating the file
+            os.mkdir(self._path)
+
+            # Update lock state
+            self._locked = True
+
+            # Locking succeeded
+            return True
+        except OSError:
+            # Check whether the creation time of the path is old
+            if time.time() - os.path.getctime(self._path) > self._timeout:
+                shutil.rmtree(self._path, ignore_errors=True)
+
+            # Locking failed
+            return False
 
 
 class ReferenceLock(object):

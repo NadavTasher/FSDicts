@@ -2,7 +2,7 @@ import os
 import hashlib
 import binascii
 
-from fsdicts.lock import LocalLock, FileLock
+from fsdicts.lock import TemporaryLock, DirectoryLock
 
 
 class Storage(object):
@@ -34,7 +34,7 @@ class Storage(object):
 
 class LinkStorage(Storage):
 
-    def __init__(self, path, lock=LocalLock, hash=hashlib.md5):
+    def __init__(self, path, lock=TemporaryLock, hash=hashlib.md5):
         # Make sure the operating system is supported
         if os.name != "posix":
             raise NotImplementedError("Unsupported operating system")
@@ -172,7 +172,7 @@ class LinkStorage(Storage):
 
 class ReferenceStorage(Storage):
 
-    def __init__(self, path, lock=FileLock, hash=hashlib.md5):
+    def __init__(self, path, lock=DirectoryLock, hash=hashlib.md5):
         # Make the path absolute
         path = os.path.abspath(path)
 
@@ -274,6 +274,13 @@ class ReferenceStorage(Storage):
         with open(link, "r") as file:
             hash = file.read()
 
+        # Calculate the checksum length
+        length = len(self._hash().hexdigest())
+
+        # Make sure the hash is valid
+        if len(hash) != length:
+            raise ValueError(hash)
+
         # Create the object path
         object_path = os.path.join(self._objects_path, hash)
 
@@ -300,6 +307,14 @@ class ReferenceStorage(Storage):
         # Read the link file
         with open(link, "r") as file:
             hash = file.read()
+
+        # If the link is empty, just delete the file
+        if not hash:
+            # Remove the link
+            os.remove(link)
+
+            # Nothing more to do
+            return
 
         # Create the object path
         object_path = os.path.join(self._objects_path, hash)

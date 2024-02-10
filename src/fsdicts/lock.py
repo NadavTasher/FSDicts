@@ -9,35 +9,20 @@ import threading
 from fsdicts.encoders import ENCODING
 
 
-class FileLock(object):
+class Lock(object):
 
     def __init__(self, path):
-        # Create the lock path
-        self._path = path + ".lock"
+        # Set the path internally
+        self._path = path
 
         # Create internal state
         self._locked = False
 
     def _try_acquire(self):
-        try:
-            # Try creating the file
-            os.mkdir(self._path)
-
-            # Update lock state
-            self._locked = True
-
-            # Locking succeeded
-            return True
-        except OSError:
-            # Locking failed
-            return False
+        raise NotImplementedError()
 
     def _try_release(self):
-        # Try removing the directory
-        os.rmdir(self._path)
-
-        # Update the lock status
-        self._locked = False
+        raise NotImplementedError()
 
     def locked(self):
         return self._locked
@@ -90,32 +75,11 @@ class FileLock(object):
         return "<%s, %s>" % (self.__class__.__name__, "locked" if self._locked else "unlocked")
 
 
-class LocalLock(FileLock):
+class DirectoryLock(Lock):
 
-    def __init__(self, path, temporary_directory=os.path.join(tempfile.gettempdir(), __name__)):
-        # Create the directory if it does not exist
-        if not os.path.isdir(temporary_directory):
-            os.makedirs(temporary_directory)
-
-        # If the path is a string, encode it
-        if isinstance(path, str):
-            path = path.encode(ENCODING)
-
-        # Create hexdigest from path
-        hexdigest = hashlib.md5(path).hexdigest()
-
-        # Create the lock path based on the given path
-        super(LocalLock, self).__init__(os.path.join(temporary_directory, hexdigest))
-
-
-class TimeoutLock(FileLock):
-
-    def __init__(self, path, timeout=60):
+    def __init__(self, path):
         # Initialize the parent
-        super(TimeoutLock, self).__init__(path)
-
-        # Set the internal timeout
-        self._timeout = timeout
+        super(DirectoryLock, self).__init__(path + ".lock")
 
     def _try_acquire(self):
         try:
@@ -128,13 +92,41 @@ class TimeoutLock(FileLock):
             # Locking succeeded
             return True
         except OSError:
-            try:
-                # Check whether the creation time of the path is old
-                if time.time() - os.path.getctime(self._path) > self._timeout:
-                    self._try_release()
-            except OSError:
-                # Nothing to do
-                pass
+            # Locking failed
+            return False
+
+    def _try_release(self):
+        # Try removing the directory
+        os.rmdir(self._path)
+
+        # Update the lock status
+        self._locked = False
+
+
+class TimeoutLock(Lock):
+
+    TIMEOUT = 60 * 10  # 10 Minutes
+
+    def __init__(self, path, timeout=None):
+        # Initialize the parent
+        super(TimeoutLock, self).__init__(path + ".lock")
+
+        # Set the internal timeout
+        self._timeout = timeout or self.TIMEOUT
+
+    def _try_acquire(self):
+        try:
+            # Try creating the file
+            os.mkdir(self._path)
+
+            # Update lock state
+            self._locked = True
+
+            # Locking succeeded
+            return True
+        except OSError:
+            # Try clearing the lock
+            self._try_clear()
 
             # Locking failed
             return False
@@ -146,66 +138,38 @@ class TimeoutLock(FileLock):
         # Set the lock state
         self._locked = False
 
+    def _try_clear(self):
+        try:
+            # Check lock age to compare against timeout
+            if (time.time() - os.path.getctime(self._path)) < self._timeout:
+                # Lock is not old enough
+                return False
 
-class ReferenceLock(object):
+            # Try releasing the lock
+            self._try_release()
 
-    def __init__(self, lock):
-        # Initialize the internal lock
-        self._lock = lock
+            # Lock was released
+            return True
+        except OSError:
+            # Failed clearing lock
+            return False
 
-        # Initialize the counter
-        self._thread = None
-        self._references = 0
 
-    def acquire(self, blocking=True, timeout=None):
-        # Fetch the current thread
-        current_thread = threading.current_thread()
+class TemporaryLock(TimeoutLock):
 
-        # If there are no references, lock the lock
-        if current_thread != self._thread:
-            # Lock the lock
-            self._lock.acquire(blocking=blocking, timeout=timeout)
+    DIRECTORY = os.path.join(tempfile.gettempdir(), __name__)
 
-            # Set the thread
-            self._thread = current_thread
+    def __init__(self, path, timeout=None):
+        # Create the directory if it does not exist
+        if not os.path.isdir(self.DIRECTORY):
+            os.makedirs(self.DIRECTORY)
 
-        # Increment the reference count
-        self._references += 1
+        # If the path is a string, encode it
+        if isinstance(path, str):
+            path = path.encode(ENCODING)
 
-    def release(self):
-        # Fetch the current thread
-        current_thread = threading.current_thread()
+        # Create hexdigest from path
+        hexdigest = hashlib.md5(path).hexdigest()
 
-        # Make sure the thread is the locking thread
-        if current_thread != self._thread:
-            raise RuntimeError("Thread %r can't release %r" % (current_thread, self))
-
-        # Check the reference count
-        if not self._references:
-            raise RuntimeError("Already released")
-
-        # Decrement the references
-        self._references -= 1
-
-        # Check if should release lock
-        if not self._references:
-            # Clear the thread
-            self._thread = None
-
-            # Release the lock
-            self._lock.release()
-
-    def __enter__(self):
-        # Lock the lock
-        self.acquire()
-
-        # Return "self"
-        return self
-
-    def __exit__(self, *exc_info):
-        # Unlock the lock
-        self.release()
-
-    def __str__(self):
-        # Create a string representation of the lock
-        return "<%s, %d references>" % (self.__class__.__name__, self._references)
+        # Create the lock path based on the given path
+        super(TemporaryLock, self).__init__(os.path.join(self.DIRECTORY, hexdigest), timeout)

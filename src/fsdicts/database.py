@@ -1,6 +1,6 @@
 import os
 
-from fsdicts.lock import TimeoutLock, LocalLock
+from fsdicts.lock import TimeoutLock, TemporaryLock
 from fsdicts.encoders import JSON, PYTHON
 from fsdicts.storage import ReferenceStorage, LinkStorage
 from fsdicts.dictionary import AttributeDictionary
@@ -22,6 +22,6 @@ def fsdict(path, encoder=JSON, dictionary=AttributeDictionary, storage=Reference
 def localdict(path, encoder=PYTHON):
     # Pick the best locks and storage for use-case
     if os.name == "posix":
-        return fsdict(path, encoder=encoder, dictionary=AttributeDictionary, storage=LinkStorage, lock=LocalLock)
+        return fsdict(path, encoder=encoder, dictionary=AttributeDictionary, storage=LinkStorage, lock=TemporaryLock)
     else:
-        return fsdict(path, encoder=encoder, dictionary=AttributeDictionary, storage=ReferenceStorage, lock=LocalLock)
+        return fsdict(path, encoder=encoder, dictionary=AttributeDictionary, storage=ReferenceStorage, lock=TemporaryLock)

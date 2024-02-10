@@ -33,17 +33,18 @@ class Dictionary(AdvancedMutableMapping):
     def _child_instance(self, path):
         return Dictionary(path, (self._key_storage, self._value_storage), (self._encode, self._decode), self._lock)
 
-    def _internal_move_temporary(self):
-        pass
-
     def _internal_iter(self):
         # List all of the items in the path
         for checksum in os.listdir(self._path):
-            # Create key path
-            key_path = os.path.join(self._path, checksum, FILE_KEY)
+            # Create key and value paths
+            key_path, value_path = os.path.join(self._path, checksum, FILE_KEY), os.path.join(self._path, checksum, FILE_VALUE)
 
             # Make sure the key path exists
-            if not os.path.isfile(key_path):
+            if not os.path.exists(key_path):
+                continue
+
+            # Make sure the value path exists
+            if not os.path.exists(value_path):
                 continue
 
             # Yield the checksum
@@ -53,8 +54,11 @@ class Dictionary(AdvancedMutableMapping):
         # Resolve item path
         item_path = self._item_path(key)
 
+        # Resolve value path
+        key_path, value_path = os.path.join(item_path, FILE_KEY), os.path.join(item_path, FILE_VALUE)
+
         # Check if paths exist
-        return os.path.isdir(item_path)
+        return os.path.isdir(item_path) and os.path.exists(key_path) and os.path.exists(value_path)
 
     def _internal_setitem(self, key, value):
         # Delete the old value

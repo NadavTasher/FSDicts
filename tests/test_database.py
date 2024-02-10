@@ -5,12 +5,12 @@ import itertools
 from fsdicts import *
 
 
-@pytest.fixture(params=itertools.product([PYTHON, JSON], [Dictionary, AttributeDictionary], [LinkStorage, ReferenceStorage], [LocalLock, TimeoutLock]))
+@pytest.fixture(params=itertools.product([PYTHON, JSON], [Dictionary, AttributeDictionary], [LinkStorage, ReferenceStorage], [TemporaryLock, TimeoutLock]))
 def database(request):
     return fsdict(tempfile.mktemp(), *request.param)
 
 
-@pytest.fixture(params=itertools.product([PYTHON, JSON], [AttributeDictionary], [LinkStorage, ReferenceStorage], [LocalLock, FileLock]))
+@pytest.fixture(params=itertools.product([PYTHON, JSON], [AttributeDictionary], [LinkStorage, ReferenceStorage], [TemporaryLock, DirectoryLock]))
 def bunch_database(request):
     return fsdict(tempfile.mktemp(), *request.param)
 

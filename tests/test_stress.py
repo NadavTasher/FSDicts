@@ -92,7 +92,7 @@ def test_database_kill_during_write(database):
     time.sleep(random.random())
 
     # Kill the process
-    process.kill()
+    process.terminate()
 
     # Wait for the process to stop
     process.join()
@@ -128,7 +128,7 @@ def test_database_multiprocess_kill_during_write(database):
 
     for p in processes:
         # Kill the process
-        p.kill()
+        p.terminate()
 
     # Wait for all processes
     for p in processes:

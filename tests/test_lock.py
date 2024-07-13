@@ -27,8 +27,22 @@ def test_lock(lock_class):
     # Try acquiring now
     assert lock_class(path).acquire(blocking=False), "Lock was not released"
 
+def test_double_lock_acquire_timeout(lock_class):
+    # Create path to lock on
+    path = tempfile.mktemp()
 
-def test_lock_multithreaded(lock_class, num_threads=5, thread_sleep=0.2):
+    # Acquire the lock
+    with lock_class(path):
+        # Mark select time
+        start_time = time.time()
+
+        # Try acquiring the lock again
+        assert not lock_class(path).acquire(blocking=True, timeout=3), "Lock was acquired but it shouldn't have been possible"
+
+        # Make sure at least 3 seconds have passed
+        assert time.time() - start_time >= 3, "Not enough time has passed"
+
+def test_lock_multithreaded(lock_class, num_threads=10, thread_sleep=0.2):
     # Create path to lock on
     path = tempfile.mktemp()
 
@@ -54,10 +68,10 @@ def test_lock_multithreaded(lock_class, num_threads=5, thread_sleep=0.2):
     assert (time.time() - start) > float(num_threads * thread_sleep)
 
 
-def test_lock_multithreaded_samelock(num_threads=5, thread_sleep=0.2):
+def test_lock_multithreaded_samelock(lock_class, num_threads=5, thread_sleep=0.2):
     # Create path to lock on
     path = tempfile.mktemp()
-    lock = DirectoryLock(path)
+    lock = lock_class(path)
 
     def target(lock, sleep):
         # Try locking the path
@@ -81,16 +95,16 @@ def test_lock_multithreaded_samelock(num_threads=5, thread_sleep=0.2):
     assert (time.time() - start) > float(num_threads * thread_sleep)
 
 
-def test_lock_nonblocking():
+def test_lock_nonblocking(lock_class):
     # Create path to lock on
     path = tempfile.mktemp()
 
     # Create the lock
-    lock = DirectoryLock(path)
+    lock = lock_class(path)
 
     # Try locking the lock
     assert lock.acquire(False)
-    assert not lock.acquire(False)
+    assert not lock_class(path).acquire(False)
 
     # Release the lock
     lock.release()
@@ -102,18 +116,22 @@ def test_lock_nonblocking():
     start_time = time.time()
 
     # Try aquiring the lock
-    assert not lock.acquire(timeout=1)
+    assert not lock_class(path).acquire(timeout=1)
 
     # Check end time
     assert time.time() - start_time > 1
 
 
-def test_timeout_lock():
+def test_timeout_lock(lock_class):
     # Create path to lock on
     path = tempfile.mktemp()
 
+    # Create a custom class with the TimeoutLock mixin
+    class CustomTimeoutLock(lock_class, TimeoutLock):
+        pass
+
     # Create the lock
-    lock = TimeoutLock(path, 4)
+    lock = CustomTimeoutLock(path, 4)
 
     # Try locking the lock
     time_a = time.time()

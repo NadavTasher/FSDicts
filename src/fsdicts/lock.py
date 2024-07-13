@@ -61,7 +61,8 @@ class Lock(object):
 
     def __enter__(self):
         # Lock the lock
-        self.acquire()
+        if not self.acquire():
+            raise RuntimeError("Failed acquiring lock")
 
         # Return "self"
         return self
@@ -123,12 +124,12 @@ class FileLock(Lock):
         # Loop until file is locked
         while not self._locked:
             # Wait for file to be ready
-            ready, _, _ = select.select([self._file_descriptor], [], [], timeout - (time.time() - start_time))
+            _, _, ready = select.select([], [], [self._file_descriptor], max(0, timeout - (time.time() - start_time)))
 
             # Check whether the file is ready
             if not ready:
                 return False
-
+            
             # Try locking now
             if self._try_acquire():
                 return True

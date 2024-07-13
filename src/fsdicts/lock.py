@@ -2,9 +2,9 @@ import os
 import time
 import shutil
 import random
+import select
 import hashlib
 import tempfile
-import threading
 
 from fsdicts.encoders import ENCODING
 
@@ -73,6 +73,82 @@ class Lock(object):
     def __str__(self):
         # Create a string representation of the lock
         return "<%s, %s>" % (self.__class__.__name__, "locked" if self._locked else "unlocked")
+
+
+class FileLock(Lock):
+
+    def __init__(self, path):
+        # Initialize the parent
+        super(FileLock, self).__init__(path + ".lock")
+
+        # Import fcntl
+        self._fcntl = __import__("fcntl")
+
+        # Create file-descriptor parameter
+        self._file_descriptor = None
+
+    def _try_acquire(self):
+        try:
+            # Try locking in non-blocking mode
+            self._fcntl.flock(self._file_descriptor, self._fcntl.LOCK_EX | self._fcntl.LOCK_NB)
+
+            # Mark as locked
+            self._locked = True
+
+            # Locking succeeded!
+            return True
+        except IOError:
+            # Locking failed!
+            return False
+
+    def acquire(self, blocking=True, timeout=None):
+        # Make sure lock is not locked
+        if self._locked:
+            raise RuntimeError("Already locked")
+
+        # Try creating the file
+        self._file_descriptor = os.open(self._path, os.O_WRONLY | os.O_CREAT)
+
+        # Try locking for the first time
+        if self._try_acquire():
+            return True
+
+        # When in non-blocking mode, return here
+        if not blocking:
+            return False
+
+        # Mark start time
+        start_time = time.time()
+
+        # Loop until file is locked
+        while not self._locked:
+            # Wait for file to be ready
+            ready, _, _ = select.select([self._file_descriptor], [], [], timeout - (time.time() - start_time))
+
+            # Check whether the file is ready
+            if not ready:
+                return False
+
+            # Try locking now
+            if self._try_acquire():
+                return True
+
+    def release(self):
+        # Make sure lock is locked
+        if not self._locked:
+            raise RuntimeError("Not locked")
+
+        # Release the lock
+        self._fcntl.flock(self._file_descriptor, self._fcntl.LOCK_UN)
+
+        # Close the file
+        os.close(self._file_descriptor)
+
+        # Update the lock status
+        self._locked = False
+
+        # Try removing the file
+        os.remove(self._path)
 
 
 class DirectoryLock(Lock):

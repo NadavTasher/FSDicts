@@ -1,27 +1,40 @@
 import os
 import time
+import pytest
 import tempfile
+import itertools
 import threading
 
 from fsdicts import *
 
+lock_types = [FileLock, DirectoryLock]
 
-def test_lock():
+
+@pytest.fixture(params=itertools.product(lock_types))
+def lock_class(request):
+    lock_class,=request.param
+    return lock_class
+
+def test_lock(lock_class):
     # Create path to lock on
     path = tempfile.mktemp()
 
-    # DirectoryLock the path
-    with DirectoryLock(path) as lock:
-        assert os.path.isdir(lock._path)
+    # Lock the path
+    with lock_class(path):
+        # Make sure lock can't be acquired
+        assert not lock_class(path).acquire(blocking=False), "Lock has failed to be exclusive"
+    
+    # Try acquiring now
+    assert lock_class(path).acquire(blocking=False), "Lock was not released"
 
 
-def test_lock_multithreaded(num_threads=5, thread_sleep=0.2):
+def test_lock_multithreaded(lock_class, num_threads=5, thread_sleep=0.2):
     # Create path to lock on
     path = tempfile.mktemp()
 
     def target(path, sleep):
         # Try locking the path
-        with DirectoryLock(path):
+        with lock_class(path):
             time.sleep(sleep)
 
     # Create threads

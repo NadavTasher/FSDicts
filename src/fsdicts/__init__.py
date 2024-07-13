@@ -5,7 +5,7 @@ from fsdicts.encoders import JSON, PYTHON
 from fsdicts.database import fsdict, localdict
 
 # Underlaying classes
-from fsdicts.lock import Lock, DirectoryLock, TimeoutLock, TemporaryLock
+from fsdicts.lock import Lock, FileLock, DirectoryLock, TimeoutLock, TemporaryLock
 from fsdicts.bunch import AttributeMapping, Bunch
 from fsdicts.mapping import AdvancedMutableMapping, MutableMapping, Mapping
 from fsdicts.storage import Storage, NoStorage, LinkStorage, ReferenceStorage
